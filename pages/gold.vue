@@ -82,6 +82,10 @@
                         :aria-label="lang === 'en' ? 'Switch to Khmer' : 'Switch to English'">
                         {{ lang === 'en' ? 'ខ្មែរ' : 'EN' }}
                     </button>
+                    <button class="ctrl-btn khr-btn" @click="showKHR = !showKHR; save()"
+                        :aria-label="showKHR ? 'Switch to USD' : 'Switch to KHR'">
+                        {{ showKHR ? 'USD' : '៛' }}
+                    </button>
                     <button class="ctrl-btn lock-nav-btn" @click="openPwModal"
                         :aria-label="isOwner ? 'Owner active' : 'Unlock owner view'">
                         {{ isOwner ? '🔓' : '🔒' }}
@@ -98,11 +102,11 @@
             <span class="sticky-gem">◈</span>
             <div class="sticky-prices">
                 <div class="sticky-row-main">
-                    <span class="sticky-val">${{ renderedPrice?.toFixed(2) ?? '——' }}</span>
+                    <span class="sticky-val">{{ fmt(renderedPrice) }}</span>
                     <span class="sticky-unit">/ troy oz</span>
                 </div>
                 <div class="sticky-row-sub" v-if="displayPrice">
-                    <span class="sticky-val-sub">${{ (renderedPrice / 31.1035 * 37.5).toFixed(2) }}</span>
+                    <span class="sticky-val-sub">{{ fmt(renderedPrice / TROY * DAMLUNG) }}</span>
                     <span class="sticky-unit-sub">/ damlung</span>
                 </div>
             </div>
@@ -121,9 +125,10 @@
                 <div class="col-left">
 
                     <!-- ── PRICE SECTION ── -->
-                    <section class="card price-hero">
-                        <div class="card-accent" />
-
+                    <BorderGlow class="card price-hero" id="section-price"
+                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
+                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
+                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
                         <!-- Source Toggle -->
                         <div class="seg-ctrl">
                             <button class="seg-btn" :class="{ active: priceSource === 'api' }"
@@ -152,14 +157,28 @@
                             <transition name="price-flip" mode="out-in">
                                 <div class="hero-price" :class="priceTickDir ? `price-tick-${priceTickDir}` : ''"
                                     :key="displayPrice?.toFixed(0) ?? 'null'">
-                                    <span class="price-dollar">$</span>
-                                    <span class="price-int">{{ animatedPrice ?
+                                    <template v-if="!showKHR">
+                                        <span class="price-dollar">$</span>
+                                        <span class="price-int">{{ animatedPrice ?
         Math.floor(animatedPrice).toLocaleString() : '——' }}</span>
-                                    <span v-if="displayPrice" class="price-dec">.{{ (displayPrice %
+                                        <span v-if="displayPrice" class="price-dec">.{{ (displayPrice %
         1).toFixed(2).slice(2) }}</span>
+                                    </template>
+                                    <template v-else>
+                                        <span class="price-dollar">៛</span>
+                                        <span class="price-int price-int--khr">{{ animatedPrice ?
+        Math.floor(animatedPrice * khrRate).toLocaleString() : '——' }}</span>
+                                    </template>
                                 </div>
                             </transition>
-                            <span class="price-unit-label">{{ t.perTroyOz }}</span>
+                            <div class="price-unit-meta">
+                                <span class="price-unit-label">{{ t.perTroyOz }}</span>
+                                <div v-if="showKHR" class="khr-rate-row">
+                                    <span class="khr-rate-label">1 USD =</span>
+                                    <input v-model.number="khrRate" class="khr-rate-input" type="number" min="1000" max="99999" @change="save()" />
+                                    <span class="khr-rate-label">KHR</span>
+                                </div>
+                            </div>
 
                             <!-- Sparkline -->
                             <div v-if="priceHistory.length >= 2" class="sparkline-wrap">
@@ -175,9 +194,9 @@
                                         stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
                                 <div class="sparkline-meta">
-                                    <span class="sparkline-low">${{ Math.min(...priceHistory).toFixed(0) }}</span>
-                                    <span class="sparkline-label">{{ priceHistory.length }} fetches</span>
-                                    <span class="sparkline-high">${{ Math.max(...priceHistory).toFixed(0) }}</span>
+                                    <span class="sparkline-low">${{ Math.min(...priceHistory.map(e => e.price)).toFixed(0) }}</span>
+                                    <span class="sparkline-label">{{ sparklineTimeRange }}</span>
+                                    <span class="sparkline-high">${{ Math.max(...priceHistory.map(e => e.price)).toFixed(0) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -228,6 +247,14 @@
                                 <a href="https://www.goldapi.io/" target="_blank" rel="noopener">goldapi.io</a>
                                 {{ t.asBackup }}
                             </p>
+                            <div class="auto-refresh-row">
+                                <span class="api-hint-text">Auto-refresh</span>
+                                <div class="refresh-seg">
+                                    <button v-for="opt in [{l:'Off',v:0},{l:'30s',v:30},{l:'1m',v:60},{l:'5m',v:300}]"
+                                        :key="opt.v" class="rseg-btn" :class="{ active: autoRefreshInterval === opt.v }"
+                                        @click="autoRefreshInterval = opt.v">{{ opt.l }}</button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Custom Panel -->
@@ -246,10 +273,13 @@
                                     @input="applyCustomPrice" />
                             </div>
                         </div>
-                    </section>
+                    </BorderGlow>
 
                     <!-- ── CONVERTER ── -->
-                    <section class="card">
+                    <BorderGlow class="card"
+                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
+                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
+                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
                         <h2 class="section-title">{{ t.unitConverter }}</h2>
 
                         <div class="conv-tabs-scroll">
@@ -277,7 +307,7 @@
                             <span class="conv-usd-label">≈ USD value</span>
                             <span class="conv-usd-val">${{ convValueUSD.toFixed(2) }}</span>
                         </div>
-                    </section>
+                    </BorderGlow>
 
                 </div>
 
@@ -285,7 +315,10 @@
                 <div class="col-center">
 
                     <!-- ── PRICE GRID ── -->
-                    <section class="card">
+                    <BorderGlow class="card"
+                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
+                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
+                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
                         <div class="section-header">
                             <h2 class="section-title">{{ t.priceByUnit }}</h2>
                             <span v-if="displayPrice && convInput && convInput !== 1" class="conv-qty-badge">
@@ -323,15 +356,26 @@
                             <button class="ghost-btn" style="font-size:12px;padding:8px 16px;" @click="fetchPrice">↻
                                 Fetch price</button>
                         </div>
-                    </section>
+                    </BorderGlow>
 
                     <!-- ── PURCHASES ── -->
-                    <section class="card" id="purchases-section" :class="{ 'section-glow': purchasesGlow }">
+                    <BorderGlow class="card" id="purchases-section" :class="{ 'section-glow': purchasesGlow }"
+                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
+                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
+                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
                         <div class="section-header">
                             <h2 class="section-title">{{ t.myPurchases }}</h2>
                             <div class="section-actions">
-                                <button class="ghost-btn" @click="exportCSV">↓ CSV</button>
-                                <button class="ghost-btn" @click="csvInput.click()">↑ CSV</button>
+                                <select v-model="purchaseSort" class="sort-select">
+                                    <option value="date-desc">Date ↓</option>
+                                    <option value="date-asc">Date ↑</option>
+                                    <option value="gl-desc">G/L ↓</option>
+                                    <option value="gl-asc">G/L ↑</option>
+                                    <option value="weight-desc">Weight ↓</option>
+                                    <option value="weight-asc">Weight ↑</option>
+                                </select>
+                                <button class="ghost-btn" @click="exportCSV" title="Export CSV">↓ Export</button>
+                                <button class="ghost-btn" @click="csvInput.click()" title="Import CSV">↑ Import</button>
                                 <input ref="csvInput" type="file" accept=".csv" hidden @change="importCSV" />
                             </div>
                         </div>
@@ -381,85 +425,101 @@
                                 </div>
                             </transition>
 
+                            <!-- Total weight summary -->
+                            <div v-if="purchases.length" class="purchases-totals">
+                                <span>{{ purchases.length }} purchase{{ purchases.length !== 1 ? 's' : '' }}</span>
+                                <span class="purchases-total-weight">◈ {{ totalWeightChi.toFixed(2) }} Chi · {{ totalWeightGrams.toFixed(1) }}g</span>
+                            </div>
+
                             <!-- Purchase Cards -->
                             <div v-if="purchases.length" class="purchases-list">
-                                <div v-for="(p, i) in purchases" :key="p.id" class="p-card p-card-stagger" :style="{
-        borderLeftColor: gainLoss(p) >= 0 ? 'var(--gain)' : 'var(--loss)',
-        borderColor: gainLoss(p) >= 0 ? 'var(--gain-border)' : 'var(--loss-border)',
-        background: gainLoss(p) >= 0 ? 'var(--gain-bg)' : 'var(--loss-bg)',
-        animationDelay: (i * 0.07) + 's'
-    }">
-                                    <template v-if="editIdx !== i">
-                                        <div class="pcard-header">
-                                            <div class="pcard-weight-row">
-                                                <span class="pcard-weight">{{ p.weight }} <span class="pcard-unit">{{
-        t[p.unit] || p.unit }}</span></span>
-                                                <span class="pcard-date">{{ formatDate(p.date) }}</span>
+                                <BorderGlow
+                                    v-for="(p, i) in sortedPurchases"
+                                    :key="p.id"
+                                    class="p-card-stagger"
+                                    :style="{ animationDelay: (i * 0.07) + 's' }"
+                                    :colors="gainLoss(p) >= 0 ? ['#22C55E', '#4ade80', '#16a34a'] : ['#F87171', '#ef4444', '#dc2626']"
+                                    :glowColor="gainLoss(p) >= 0 ? '142 71 55' : '0 84 70'"
+                                    :backgroundColor="isDark ? '#1A1A26' : '#F9F7F2'"
+                                    :borderRadius="14"
+                                    :glowIntensity="0.9"
+                                    :fillOpacity="0.2"
+                                    :glowRadius="28"
+                                    :coneSpread="20"
+                                >
+                                    <div class="p-card" :style="{
+                                        border: 'none',
+                                        borderLeft: gainLoss(p) >= 0 ? '3px solid var(--gain)' : '3px solid var(--loss)',
+                                        background: gainLoss(p) >= 0 ? 'var(--gain-bg)' : 'var(--loss-bg)',
+                                        borderRadius: '13px',
+                                    }">
+                                        <template v-if="editIdx !== p.id">
+                                            <div class="pcard-header">
+                                                <div class="pcard-weight-row">
+                                                    <span class="pcard-weight">{{ p.weight }} <span class="pcard-unit">{{
+            t[p.unit] || p.unit }}</span></span>
+                                                    <span class="pcard-date">{{ formatDate(p.date) }}</span>
+                                                </div>
+                                                <div class="pcard-btns">
+                                                    <button class="pcard-btn" @click="startEdit(p)"
+                                                        :aria-label="t.edit">✎</button>
+                                                    <button class="pcard-btn danger" @click="removePurchase(p)"
+                                                        :aria-label="t.delete">✕</button>
+                                                </div>
                                             </div>
-                                            <div class="pcard-btns">
-                                                <button class="pcard-btn" @click="startEdit(i)"
-                                                    :aria-label="t.edit">✎</button>
-                                                <button class="pcard-btn danger" @click="removePurchase(i)"
-                                                    :aria-label="t.delete">✕</button>
+                                            <div class="gl-row">
+                                                <div class="gl-col">
+                                                    <span class="gl-label">{{ t.paid }}</span>
+                                                    <span class="gl-val">{{ fmt(p.price) }}</span>
+                                                </div>
+                                                <div class="gl-divider" />
+                                                <div class="gl-col">
+                                                    <span class="gl-label">{{ t.current }}</span>
+                                                    <span class="gl-val"
+                                                        :class="gainLoss(p) >= 0 ? 'gain-text' : 'loss-text'">{{ fmt(currentValue(p)) }}</span>
+                                                </div>
+                                                <div class="gl-divider" />
+                                                <div class="gl-col">
+                                                    <span class="gl-label"
+                                                        :class="gainLoss(p) >= 0 ? 'gain-text' : 'loss-text'">{{ gainLoss(p) >= 0 ? t.gain : t.loss }}</span>
+                                                    <span class="gl-val gl-main"
+                                                        :class="gainLoss(p) >= 0 ? 'gain-text' : 'loss-text'">
+                                                        {{ (gainLoss(p) >= 0 ? '+' : '') + fmt(Math.abs(gainLoss(p))) }}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="gl-row">
-                                            <div class="gl-col">
-                                                <span class="gl-label">{{ t.paid }}</span>
-                                                <span class="gl-val">${{ p.price.toFixed(2) }}</span>
-                                            </div>
-                                            <div class="gl-divider" />
-                                            <div class="gl-col">
-                                                <span class="gl-label">{{ t.current }}</span>
-                                                <span class="gl-val"
-                                                    :class="gainLoss(p) >= 0 ? 'gain-text' : 'loss-text'">${{
-        currentValue(p).toFixed(2) }}</span>
-                                            </div>
-                                            <div class="gl-divider" />
-                                            <div class="gl-col">
-                                                <span class="gl-label"
-                                                    :class="gainLoss(p) >= 0 ? 'gain-text' : 'loss-text'">{{ gainLoss(p)
-        >= 0 ? t.gain : t.loss }}</span>
-                                                <span class="gl-val gl-main"
-                                                    :class="gainLoss(p) >= 0 ? 'gain-text' : 'loss-text'">
-                                                    {{ gainLoss(p) >= 0 ? '+' : '' }}${{ gainLoss(p).toFixed(2) }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </template>
+                                        </template>
 
-                                    <template v-else>
-                                        <div class="form-grid">
-                                            <div class="form-field">
-                                                <label>{{ t.weight }}</label>
-                                                <input v-model.number="editDraft.weight" type="text" inputmode="decimal"
-                                                    class="text-input" />
+                                        <template v-else>
+                                            <div class="form-grid">
+                                                <div class="form-field">
+                                                    <label>{{ t.weight }}</label>
+                                                    <input v-model.number="editDraft.weight" type="text" inputmode="decimal"
+                                                        class="text-input" />
+                                                </div>
+                                                <div class="form-field">
+                                                    <label>{{ t.unit }}</label>
+                                                    <select v-model="editDraft.unit" class="text-input">
+                                                        <option v-for="u in converterUnits" :key="u" :value="u">{{ t[u] || u }}</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-field">
+                                                    <label>{{ t.pricePaid }}</label>
+                                                    <input v-model.number="editDraft.price" type="text" inputmode="decimal"
+                                                        class="text-input" />
+                                                </div>
+                                                <div class="form-field">
+                                                    <label>{{ t.date }}</label>
+                                                    <input v-model="editDraft.date" type="date" class="text-input" />
+                                                </div>
                                             </div>
-                                            <div class="form-field">
-                                                <label>{{ t.unit }}</label>
-                                                <select v-model="editDraft.unit" class="text-input">
-                                                    <option v-for="u in converterUnits" :key="u" :value="u">{{ t[u] || u
-                                                        }}</option>
-                                                </select>
+                                            <div class="edit-actions">
+                                                <button class="primary-btn" style="flex:1" @click="saveEdit">{{ t.save }}</button>
+                                                <button class="ghost-btn" style="flex:1" @click="editIdx = null">{{ t.cancel }}</button>
                                             </div>
-                                            <div class="form-field">
-                                                <label>{{ t.pricePaid }}</label>
-                                                <input v-model.number="editDraft.price" type="text" inputmode="decimal"
-                                                    class="text-input" />
-                                            </div>
-                                            <div class="form-field">
-                                                <label>{{ t.date }}</label>
-                                                <input v-model="editDraft.date" type="date" class="text-input" />
-                                            </div>
-                                        </div>
-                                        <div class="edit-actions">
-                                            <button class="primary-btn" style="flex:1" @click="saveEdit">{{ t.save
-                                                }}</button>
-                                            <button class="ghost-btn" style="flex:1" @click="editIdx = null">{{ t.cancel
-                                                }}</button>
-                                        </div>
-                                    </template>
-                                </div>
+                                        </template>
+                                    </div>
+                                </BorderGlow>
                             </div>
 
                             <div v-else-if="!showForm" class="empty-state">
@@ -476,30 +536,35 @@
                                 <p>{{ t.noPurchases }}</p>
                             </div>
                         </div>
-                    </section>
+                    </BorderGlow>
                 </div>
 
                 <!-- ── RIGHT COLUMN: Portfolio Summary ── -->
                 <div class="col-right">
 
                     <!-- Portfolio KPI Cards -->
-                    <section class="card summary-card" v-if="purchases.length">
-                        <div class="card-accent" />
+                    <BorderGlow class="card summary-card" v-if="purchases.length" id="section-portfolio"
+                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
+                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
+                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
                         <h2 class="section-title">{{ t.portfolioSummary }}</h2>
 
                         <div class="kpi-stack">
                             <div class="kpi-item">
                                 <span class="kpi-label">{{ t.totalInvested }}</span>
-                                <span class="kpi-val">${{ displayInvested.toFixed(2) }}</span>
+                                <span class="kpi-val">{{ fmt(displayInvested) }}</span>
                             </div>
                             <div class="kpi-item" :class="totalGL >= 0 ? 'kpi-gain' : 'kpi-loss'">
                                 <span class="kpi-label">{{ t.currentValue }}</span>
-                                <span class="kpi-val">${{ displayCurrent.toFixed(2) }}</span>
+                                <span class="kpi-val">{{ fmt(displayCurrent) }}</span>
                             </div>
                             <div class="kpi-item kpi-big" :class="totalGL >= 0 ? 'kpi-gain' : 'kpi-loss'">
                                 <span class="kpi-label">{{ t.totalGainLoss }}</span>
-                                <span class="kpi-val kpi-main">{{ displayGL >= 0 ? '+' : '' }}${{ displayGL.toFixed(2)
-                                    }}</span>
+                                <span class="kpi-val kpi-main">{{ (displayGL >= 0 ? '+' : '') + fmt(Math.abs(displayGL)) }}</span>
+                            </div>
+                            <div class="kpi-item">
+                                <span class="kpi-label">Total Weight</span>
+                                <span class="kpi-val kpi-weight">{{ totalWeightChi.toFixed(2) }} <small>chi</small> · {{ totalWeightGrams.toFixed(1) }} <small>g</small></span>
                             </div>
                         </div>
 
@@ -510,10 +575,13 @@
                         <div v-if="totalInvested > 0" class="portfolio-pct" :class="totalGL >= 0 ? 'gain' : 'loss'">
                             {{ totalGL >= 0 ? '▲' : '▼' }} {{ Math.abs(totalGL / totalInvested * 100).toFixed(1) }}%
                         </div>
-                    </section>
+                    </BorderGlow>
 
                     <!-- Per-purchase breakdown table -->
-                    <section class="card" v-if="purchases.length && displayPrice">
+                    <BorderGlow class="card" v-if="purchases.length && displayPrice"
+                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
+                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
+                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
                         <h2 class="section-title">Holdings</h2>
                         <div class="holdings-table">
                             <div class="ht-header">
@@ -522,33 +590,46 @@
                                 <span>Now</span>
                                 <span>G/L</span>
                             </div>
-                            <div v-for="(p, i) in purchases" :key="p.id" class="ht-row"
+                            <div v-for="(p, i) in sortedPurchases" :key="p.id" class="ht-row"
                                 :class="[gainLoss(p) >= 0 ? 'ht-gain' : 'ht-loss', p.id === newestPurchaseId ? 'ht-row-flash' : '']">
                                 <span class="ht-weight">{{ p.weight }}<em>{{ t[p.unit] || p.unit }}</em></span>
-                                <span>${{ p.price.toFixed(0) }}</span>
-                                <span>${{ currentValue(p).toFixed(0) }}</span>
+                                <span>{{ fmt(p.price, 0) }}</span>
+                                <span>{{ fmt(currentValue(p), 0) }}</span>
                                 <span :class="gainLoss(p) >= 0 ? 'gain-text' : 'loss-text'">
-                                    {{ gainLoss(p) >= 0 ? '+' : '' }}${{ gainLoss(p).toFixed(0) }}
+                                    {{ (gainLoss(p) >= 0 ? '+' : '') + fmt(Math.abs(gainLoss(p)), 0) }}
                                 </span>
                             </div>
                         </div>
-                    </section>
+                    </BorderGlow>
 
                     <!-- Damlung price quick-ref -->
-                    <section class="card" v-if="displayPrice">
+                    <BorderGlow class="card" v-if="displayPrice"
+                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
+                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
+                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
                         <h2 class="section-title">Quick Reference</h2>
                         <div class="qref-list">
+                            <div class="qref-section-label">Chi</div>
                             <div v-for="qty in [1, 2, 5, 10]" :key="qty" class="qref-row">
                                 <span class="qref-label">{{ qty }} Chi</span>
-                                <span class="qref-val">${{ (renderedPPG * 3.75 * qty).toFixed(2) }}</span>
+                                <span class="qref-val">{{ fmt(renderedPPG * CHI * qty) }}</span>
                             </div>
                             <div class="qref-divider" />
+                            <div class="qref-section-label">Damlung</div>
                             <div v-for="qty in [1, 2, 5]" :key="'d'+qty" class="qref-row">
                                 <span class="qref-label">{{ qty }} Damlung</span>
-                                <span class="qref-val">${{ (renderedPPG * 37.5 * qty).toFixed(2) }}</span>
+                                <span class="qref-val">{{ fmt(renderedPPG * DAMLUNG * qty) }}</span>
                             </div>
+                            <template v-if="qrefHoldingsRows.length">
+                                <div class="qref-divider" />
+                                <div class="qref-section-label">My Holdings</div>
+                                <div v-for="row in qrefHoldingsRows" :key="row.key" class="qref-row">
+                                    <span class="qref-label">{{ row.weight }} {{ t[row.unit] || row.unit }}</span>
+                                    <span class="qref-val">{{ fmt(row.value) }}</span>
+                                </div>
+                            </template>
                         </div>
-                    </section>
+                    </BorderGlow>
 
                 </div>
             </div>
@@ -557,8 +638,24 @@
         </main>
 
         <footer class="footer">
-            <p>Gold Tracker · Nuxt 3 · Prices USD</p>
+            <p>Gold Tracker · Nuxt 3 · Prices {{ showKHR ? 'KHR' : 'USD' }}</p>
         </footer>
+
+        <!-- Mobile Bottom Nav -->
+        <nav class="mobile-nav" aria-label="Main navigation">
+            <button class="mnav-btn" :class="{ active: mobileTab === 'price' }" @click="navTo('price')">
+                <span class="mnav-icon">🥇</span>
+                <span class="mnav-label">Price</span>
+            </button>
+            <button class="mnav-btn" :class="{ active: mobileTab === 'purchases' }" @click="navTo('purchases')">
+                <span class="mnav-icon">📋</span>
+                <span class="mnav-label">Purchases</span>
+            </button>
+            <button class="mnav-btn" :class="{ active: mobileTab === 'portfolio' }" @click="navTo('portfolio')">
+                <span class="mnav-icon">📊</span>
+                <span class="mnav-label">Portfolio</span>
+            </button>
+        </nav>
     </div>
 </template>
 
@@ -611,6 +708,20 @@ const editIdx = ref(null)
 const editDraft = ref({})
 const csvInput = ref(null)
 
+// ─── Auto-refresh ─────────────────────────────────────────────────────────────
+const autoRefreshInterval = ref(0) // 0=off, 30, 60, 300 (seconds)
+let autoRefreshTimer = null
+
+// ─── Purchase sorting ─────────────────────────────────────────────────────────
+const purchaseSort = ref('date-desc')
+
+// ─── KHR currency ────────────────────────────────────────────────────────────
+const showKHR = ref(false)
+const khrRate = ref(4100)
+
+// ─── Mobile nav ───────────────────────────────────────────────────────────────
+const mobileTab = ref('price')
+
 // ─── Animation State ──────────────────────────────────────────────────────────
 const animatedPrice = ref(null)
 const priceTickDir = ref(null)
@@ -657,27 +768,45 @@ function stopPriceSim() {
     if (priceSimTimer) { clearTimeout(priceSimTimer); priceSimTimer = null }
 }
 
+// ─── Auto-refresh ─────────────────────────────────────────────────────────────
+function startAutoRefresh() {
+    if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null }
+    if (!autoRefreshInterval.value) return
+    autoRefreshTimer = setInterval(() => {
+        if (priceSource.value === 'api' && !loading.value) fetchPrice()
+    }, autoRefreshInterval.value * 1000)
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null }
+}
+
 // ─── Price History (sparkline) ────────────────────────────────────────────────
 const priceHistory = ref([])
 const MAX_HISTORY = 20
 
 function pushHistory(price) {
-    priceHistory.value = [...priceHistory.value, price].slice(-MAX_HISTORY)
+    const entry = { price, time: Date.now() }
+    priceHistory.value = [...priceHistory.value, entry].slice(-MAX_HISTORY)
     try { localStorage.setItem('gt4_history', JSON.stringify(priceHistory.value)) } catch { }
 }
 
 function loadHistory() {
-    try { priceHistory.value = JSON.parse(localStorage.getItem('gt4_history') || '[]') } catch { }
+    try {
+        const raw = JSON.parse(localStorage.getItem('gt4_history') || '[]')
+        priceHistory.value = raw.map(e => typeof e === 'number' ? { price: e, time: Date.now() } : e)
+    } catch { }
 }
 
 const sparklinePath = computed(() => {
     const h = priceHistory.value
     if (h.length < 2) return ''
+    const prices = h.map(e => e.price)
     const W = 280, H = 40, pad = 4
-    const min = Math.min(...h), max = Math.max(...h)
+    const min = Math.min(...prices), max = Math.max(...prices)
     const range = max - min || 1
-    const pts = h.map((v, i) => {
-        const x = pad + (i / (h.length - 1)) * (W - pad * 2)
+    const pts = prices.map((v, i) => {
+        const x = pad + (i / (prices.length - 1)) * (W - pad * 2)
         const y = H - pad - ((v - min) / range) * (H - pad * 2)
         return `${x.toFixed(1)},${y.toFixed(1)}`
     })
@@ -687,7 +816,17 @@ const sparklinePath = computed(() => {
 const sparklineColor = computed(() => {
     const h = priceHistory.value
     if (h.length < 2) return '#F5C842'
-    return h[h.length - 1] >= h[0] ? '#22C55E' : '#F87171'
+    return h[h.length - 1].price >= h[0].price ? '#22C55E' : '#F87171'
+})
+
+const sparklineTimeRange = computed(() => {
+    const h = priceHistory.value
+    if (h.length < 2) return `${h.length} pt`
+    const diffMs = Date.now() - h[0].time
+    const mins = Math.round(diffMs / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m range`
+    return `${(diffMs / 3600000).toFixed(1)}h range`
 })
 
 // ─── Password State ───────────────────────────────────────────────────────────
@@ -870,6 +1009,32 @@ const allUnitsScaled = computed(() => allUnits.value)
 const totalInvested = computed(() => purchases.value.reduce((s, p) => s + p.price, 0))
 const totalCurrent = computed(() => purchases.value.reduce((s, p) => s + currentValue(p), 0))
 const totalGL = computed(() => totalCurrent.value - totalInvested.value)
+const totalWeightGrams = computed(() => purchases.value.reduce((s, p) => s + toGrams(p.weight, p.unit), 0))
+const totalWeightChi = computed(() => totalWeightGrams.value / CHI)
+
+const sortedPurchases = computed(() => {
+    const list = [...purchases.value]
+    if (purchaseSort.value === 'date-asc') return list.sort((a, b) => a.date.localeCompare(b.date))
+    if (purchaseSort.value === 'date-desc') return list.sort((a, b) => b.date.localeCompare(a.date))
+    if (purchaseSort.value === 'gl-asc') return list.sort((a, b) => gainLoss(a) - gainLoss(b))
+    if (purchaseSort.value === 'gl-desc') return list.sort((a, b) => gainLoss(b) - gainLoss(a))
+    if (purchaseSort.value === 'weight-asc') return list.sort((a, b) => toGrams(a.weight, a.unit) - toGrams(b.weight, b.unit))
+    if (purchaseSort.value === 'weight-desc') return list.sort((a, b) => toGrams(b.weight, b.unit) - toGrams(a.weight, a.unit))
+    return list
+})
+
+const qrefHoldingsRows = computed(() => {
+    if (!purchases.value.length || !renderedPPG.value) return []
+    const seen = new Set()
+    return purchases.value.reduce((acc, p) => {
+        const key = `${p.weight}-${p.unit}`
+        if (!seen.has(key)) {
+            seen.add(key)
+            acc.push({ key, weight: p.weight, unit: p.unit, value: renderedPPG.value * toGrams(p.weight, p.unit) })
+        }
+        return acc
+    }, []).slice(0, 5)
+})
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
 function today() { return new Date().toISOString().split('T')[0] }
@@ -886,6 +1051,12 @@ function convertUnit(val, from, to) { return fromGrams(toGrams(val, from), to).t
 function currentValue(p) { return displayPrice.value ? pricePerGram.value * toGrams(p.weight, p.unit) : 0 }
 function gainLoss(p) { return currentValue(p) - p.price }
 function formatDate(d) { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) }
+
+function fmt(n, dec = 2) {
+    if (n == null) return '—'
+    if (showKHR.value) return '៛' + Math.round(n * khrRate.value).toLocaleString()
+    return '$' + n.toFixed(dec)
+}
 
 function flash(msg, type = 'success') {
     flashMsg.value = msg; flashType.value = type
@@ -1037,16 +1208,28 @@ function addPurchase() {
     displayGL.value = totalGL.value
 }
 
-function startEdit(i) { editIdx.value = i; editDraft.value = { ...purchases.value[i] } }
+function startEdit(p) { editIdx.value = p.id; editDraft.value = { ...p } }
 
 function saveEdit() {
     if (!editDraft.value.weight || !editDraft.value.price) { flash('Fill in weight and price', 'error'); return }
-    purchases.value[editIdx.value] = { ...editDraft.value }
+    const idx = purchases.value.findIndex(p => p.id === editIdx.value)
+    if (idx !== -1) purchases.value[idx] = { ...editDraft.value }
     editIdx.value = null; save()
 }
 
-function removePurchase(i) {
-    if (confirm('Delete this purchase?')) { purchases.value.splice(i, 1); save() }
+function removePurchase(p) {
+    if (confirm('Delete this purchase?')) {
+        const idx = purchases.value.findIndex(x => x.id === p.id)
+        if (idx !== -1) purchases.value.splice(idx, 1)
+        save()
+    }
+}
+
+const NAV_IDS = { price: 'section-price', purchases: 'purchases-section', portfolio: 'section-portfolio' }
+function navTo(tab) {
+    mobileTab.value = tab
+    const el = document.getElementById(NAV_IDS[tab])
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function exportCSV() {
@@ -1113,6 +1296,7 @@ function stopIdleWatch() {
 }
 
 watch(screensaver, v => { v ? startSSClock() : stopSSClock() })
+watch(autoRefreshInterval, () => { startAutoRefresh(); save() })
 
 watch(displayPrice, () => {
     if (purchases.value.length) {
@@ -1159,6 +1343,9 @@ function save() {
             lastUpdated: lastUpdated.value, priceMethod: priceMethod.value,
             customPrice: customPrice.value, customApiUrl: customApiUrl.value,
             priceSource: priceSource.value,
+            autoRefreshInterval: autoRefreshInterval.value,
+            purchaseSort: purchaseSort.value,
+            showKHR: showKHR.value, khrRate: khrRate.value,
         }))
         if (isOwner.value) {
             const extra = purchases.value.filter(p => !PRE_PURCHASES.find(pp => pp.id === p.id))
@@ -1185,6 +1372,10 @@ onMounted(() => {
         priceMethod.value = d.priceMethod || 'troyOz'
         customPrice.value = d.customPrice || null; customApiUrl.value = d.customApiUrl || ''
         priceSource.value = d.priceSource || 'api'
+        autoRefreshInterval.value = d.autoRefreshInterval || 0
+        purchaseSort.value = d.purchaseSort || 'date-desc'
+        showKHR.value = d.showKHR ?? false
+        khrRate.value = d.khrRate || 4100
     }
     // Load user's own purchases (non-owner) on start
     try {
@@ -1193,6 +1384,7 @@ onMounted(() => {
     } catch { }
     loadHistory()
     if (priceSource.value === 'api') fetchPrice()
+    if (autoRefreshInterval.value) startAutoRefresh()
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     window.addEventListener('scroll', handleScroll, { passive: true })
@@ -1204,6 +1396,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('offline', handleOffline)
     window.removeEventListener('scroll', handleScroll)
     stopPriceSim()
+    stopAutoRefresh()
     stopIdleWatch()
     stopSSClock()
     if (rafId) cancelAnimationFrame(rafId)
@@ -1756,16 +1949,6 @@ onBeforeUnmount(() => {
     border-radius: var(--radius-lg);
     padding: 18px 16px;
     position: relative;
-    overflow: hidden;
-}
-
-.card-accent {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
 }
 
 /* ── Seg control ── */
@@ -2459,6 +2642,8 @@ onBeforeUnmount(() => {
     padding: 14px;
     transition: all 0.2s;
     border-left: 3px solid var(--border);
+    height: 100%;
+    box-sizing: border-box;
 }
 
 .pcard-header {
@@ -3012,5 +3197,188 @@ onBeforeUnmount(() => {
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
     .main { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
     .header { padding-top: env(safe-area-inset-top); }
+}
+
+/* ── KHR button ── */
+.khr-btn { font-size: 13px; padding: 0 12px; min-width: unset; font-weight: 700; }
+
+/* ── KHR rate row ── */
+.price-unit-meta { display: flex; flex-direction: column; gap: 6px; }
+
+.khr-rate-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.khr-rate-label { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+
+.khr-rate-input {
+    background: var(--surface2);
+    border: 1px solid var(--gold-border);
+    border-radius: 7px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 3px 8px;
+    width: 80px;
+    text-align: right;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.khr-rate-input:focus { outline: none; border-color: var(--gold); }
+
+/* ── KHR hero price ── */
+.price-int--khr { font-size: clamp(28px, 6vw, 48px) !important; letter-spacing: -1px !important; }
+
+/* ── Auto-refresh ── */
+.auto-refresh-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.refresh-seg {
+    display: flex;
+    gap: 2px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+}
+
+.rseg-btn {
+    padding: 5px 9px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-2);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.rseg-btn.active {
+    background: var(--gold-alpha);
+    border-color: var(--gold-border);
+    color: var(--gold);
+}
+
+/* ── Sort select ── */
+.sort-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-2);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 22px 6px 8px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239490a0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 7px center;
+    background-size: 10px;
+    min-height: 36px;
+    transition: border-color 0.2s;
+}
+
+.sort-select:focus { outline: none; border-color: var(--gold-border); color: var(--text); }
+
+/* ── Purchases total weight bar ── */
+.purchases-totals {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-3);
+    font-weight: 500;
+    margin-bottom: 10px;
+    padding: 7px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+
+.purchases-total-weight {
+    font-family: var(--mono);
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 12px;
+}
+
+/* ── Total weight KPI ── */
+.kpi-weight {
+    font-size: 15px !important;
+    color: var(--text) !important;
+}
+
+.kpi-weight small { font-size: 10px; color: var(--text-3); font-weight: 500; margin-left: 1px; }
+
+/* ── Quick ref section label ── */
+.qref-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 14px 2px;
+}
+
+/* ── Mobile bottom nav ── */
+.mobile-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 150;
+    background: rgba(12, 12, 18, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 6px 0 max(8px, env(safe-area-inset-bottom));
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.app:not(.dark) .mobile-nav { background: rgba(244, 241, 235, 0.96); }
+
+.mnav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px 24px;
+    border-radius: 10px;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mnav-icon { font-size: 22px; line-height: 1; transition: transform 0.15s; }
+.mnav-label { font-size: 10px; font-weight: 600; color: var(--text-3); font-family: var(--font); letter-spacing: 0.03em; transition: color 0.15s; }
+.mnav-btn.active .mnav-label { color: var(--gold); }
+.mnav-btn.active .mnav-icon { transform: translateY(-2px); filter: drop-shadow(0 0 4px rgba(245, 200, 66, 0.55)); }
+
+@media (max-width: 767px) {
+    .mobile-nav { display: flex; }
+    .main { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
 }
 </style>

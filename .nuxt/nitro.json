@@ -1,18 +1,17 @@
 {
-  "date": "2026-05-17T13:41:44.668Z",
+  "date": "2026-05-28T18:50:57.601Z",
   "preset": "nitro-dev",
   "framework": {
     "name": "nuxt",
     "version": "3.21.2"
   },
   "versions": {
-    "nitro": "2.13.1"
+    "nitro": "2.13.4"
   },
   "dev": {
-    "pid": 22,
+    "pid": 28015,
     "workerAddress": {
-      "host": "localhost",
-      "port": 63435
+      "socketPath": "/var/folders/gg/dntzl9ps60q_l9nf647sbt2m0000gn/T/nitro-worker-28015-2-2-6575.sock"
     }
   }
 }

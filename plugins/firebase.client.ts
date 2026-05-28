@@ -1,11 +1,6 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
     apiKey: "AIzaSyCsLFm2pEX0gRuJdNFCzjYfeP7Kw7dW2XY",
     authDomain: "ousanuxt.firebaseapp.com",
@@ -16,6 +11,11 @@ const firebaseConfig = {
     measurementId: "G-XRFKS9J3DX"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+export default defineNuxtPlugin(() => {
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+
+    return {
+        provide: { firebase: app, analytics }
+    };
+});

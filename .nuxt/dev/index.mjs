@@ -1,43 +1,43 @@
 import process from 'node:process';globalThis._importMeta_={url:import.meta.url,env:process.env};import { tmpdir } from 'node:os';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, createError, getQuery as getQuery$1, readBody, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getResponseStatus, getRouterParam, getResponseStatusText } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/h3@1.15.6/node_modules/h3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, getQuery as getQuery$1, readBody, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getResponseStatus, getRouterParam, getResponseStatusText } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
 import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
-import { escapeHtml } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/@vue+shared@3.5.30/node_modules/@vue/shared/dist/shared.cjs.js';
-import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/vue-bundle-renderer@2.2.0/node_modules/vue-bundle-renderer/dist/runtime.mjs';
-import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/ufo@1.6.3/node_modules/ufo/dist/index.mjs';
-import { renderToString } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/vue@3.5.30_typescript@5.9.3/node_modules/vue/server-renderer/index.mjs';
-import destr, { destr as destr$1 } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
-import { createHooks } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
-import { createFetch, Headers as Headers$1 } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
-import { fetchNodeRequestHandler, callNodeRequestHandler } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/node-mock-http@1.0.4/node_modules/node-mock-http/dist/index.mjs';
-import { createStorage, prefixStorage } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/unstorage@1.17.4_db0@0.3.4_ioredis@5.10.0/node_modules/unstorage/dist/index.mjs';
-import unstorage_47drivers_47fs from 'file:///home/ousachea/nuxt/node_modules/.pnpm/unstorage@1.17.4_db0@0.3.4_ioredis@5.10.0/node_modules/unstorage/drivers/fs.mjs';
-import { digest } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/ohash@2.0.11/node_modules/ohash/dist/index.mjs';
-import { klona } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/klona@2.0.6/node_modules/klona/dist/index.mjs';
-import defu, { defuFn } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/defu@6.1.4/node_modules/defu/dist/defu.mjs';
-import { snakeCase } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/scule@1.3.0/node_modules/scule/dist/index.mjs';
-import { getContext } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/unctx@2.5.0/node_modules/unctx/dist/index.mjs';
-import { toRouteMatcher, createRouter } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/radix3@1.1.2/node_modules/radix3/dist/index.mjs';
+import { escapeHtml } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/@vue+shared@3.5.35/node_modules/@vue/shared/dist/shared.cjs.js';
+import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/vue-bundle-renderer@2.2.0/node_modules/vue-bundle-renderer/dist/runtime.mjs';
+import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/ufo@1.6.4/node_modules/ufo/dist/index.mjs';
+import { renderToString } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/vue@3.5.35/node_modules/vue/server-renderer/index.mjs';
+import destr, { destr as destr$1 } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
+import { createHooks } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
+import { createFetch, Headers as Headers$1 } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
+import { fetchNodeRequestHandler, callNodeRequestHandler } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/node-mock-http@1.0.4/node_modules/node-mock-http/dist/index.mjs';
+import { createStorage, prefixStorage } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.0/node_modules/unstorage/dist/index.mjs';
+import unstorage_47drivers_47fs from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.0/node_modules/unstorage/drivers/fs.mjs';
+import { digest } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/ohash@2.0.11/node_modules/ohash/dist/index.mjs';
+import { klona } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/klona@2.0.6/node_modules/klona/dist/index.mjs';
+import defu, { defuFn } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/defu@6.1.7/node_modules/defu/dist/defu.mjs';
+import { snakeCase } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/scule@1.3.0/node_modules/scule/dist/index.mjs';
+import { getContext } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/unctx@2.5.0/node_modules/unctx/dist/index.mjs';
+import { toRouteMatcher, createRouter } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/radix3@1.1.2/node_modules/radix3/dist/index.mjs';
 import { readFile } from 'node:fs/promises';
-import consola, { consola as consola$1 } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/index.mjs';
-import { ErrorParser } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/youch-core@0.3.3/node_modules/youch-core/build/index.js';
-import { Youch } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/youch@4.1.0/node_modules/youch/build/index.js';
-import { SourceMapConsumer } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/source-map@0.7.6/node_modules/source-map/source-map.js';
+import consola, { consola as consola$1 } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/index.mjs';
+import { ErrorParser } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/youch-core@0.3.3/node_modules/youch-core/build/index.js';
+import { Youch } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/youch@4.1.1/node_modules/youch/build/index.js';
+import { SourceMapConsumer } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/source-map@0.7.6/node_modules/source-map/source-map.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { stringify, uneval } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/devalue@5.6.4/node_modules/devalue/index.js';
-import { captureRawStackTrace, parseRawStackTrace } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/errx@0.1.0/node_modules/errx/dist/index.js';
-import { isVNode, isRef, toValue } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/vue@3.5.30_typescript@5.9.3/node_modules/vue/index.mjs';
-import _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw from 'file:///home/ousachea/nuxt/node_modules/.pnpm/@nuxt+vite-builder@3.21.2_nuxt@3.21.2_typescript@5.9.3_vue@3.5.30/node_modules/@nuxt/vite-builder/dist/fix-stacktrace.mjs';
+import { stringify, uneval } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/devalue@5.8.1/node_modules/devalue/index.js';
+import { captureRawStackTrace, parseRawStackTrace } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/errx@0.1.0/node_modules/errx/dist/index.js';
+import { isVNode, isRef, toValue } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/vue@3.5.35/node_modules/vue/index.mjs';
+import _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/@nuxt+vite-builder@3.21.2_@types+node@25.9.1_magicast@0.5.3_nuxt@3.21.2_@emnapi+core@1._98a5f9c21245805e0fa8780fc0eed816/node_modules/@nuxt/vite-builder/dist/fix-stacktrace.mjs';
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname as dirname$1, resolve as resolve$1 } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
-import { createHead as createHead$1, propsToString, renderSSRHead } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/unhead@2.1.12/node_modules/unhead/dist/server.mjs';
-import { DeprecationsPlugin, PromisesPlugin, TemplateParamsPlugin, AliasSortingPlugin } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/unhead@2.1.12/node_modules/unhead/dist/plugins.mjs';
-import { walkResolver } from 'file:///home/ousachea/nuxt/node_modules/.pnpm/unhead@2.1.12/node_modules/unhead/dist/utils.mjs';
+import { dirname as dirname$1, resolve as resolve$1 } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
+import { createHead as createHead$1, propsToString, renderSSRHead } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/unhead@2.1.15/node_modules/unhead/dist/server.mjs';
+import { DeprecationsPlugin, PromisesPlugin, TemplateParamsPlugin, AliasSortingPlugin } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/unhead@2.1.15/node_modules/unhead/dist/plugins.mjs';
+import { walkResolver } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/unhead@2.1.15/node_modules/unhead/dist/utils.mjs';
 
-const serverAssets = [{"baseName":"server","dir":"/home/ousachea/nuxt/server/assets"}];
+const serverAssets = [{"baseName":"server","dir":"/Users/ousa/Desktop/Nuxt_3/server/assets"}];
 
 const assets$1 = createStorage();
 
@@ -49,11 +49,11 @@ const storage = createStorage({});
 
 storage.mount('/assets', assets$1);
 
-storage.mount('root', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"/home/ousachea/nuxt","watchOptions":{"ignored":[null]}}));
-storage.mount('src', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"/home/ousachea/nuxt/server","watchOptions":{"ignored":[null]}}));
-storage.mount('build', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"/home/ousachea/nuxt/.nuxt"}));
-storage.mount('cache', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"/home/ousachea/nuxt/.nuxt/cache"}));
-storage.mount('data', unstorage_47drivers_47fs({"driver":"fs","base":"/home/ousachea/nuxt/.data/kv"}));
+storage.mount('root', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"/Users/ousa/Desktop/Nuxt_3","watchOptions":{"ignored":[null]}}));
+storage.mount('src', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"/Users/ousa/Desktop/Nuxt_3/server","watchOptions":{"ignored":[null]}}));
+storage.mount('build', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"/Users/ousa/Desktop/Nuxt_3/.nuxt"}));
+storage.mount('cache', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"/Users/ousa/Desktop/Nuxt_3/.nuxt/cache"}));
+storage.mount('data', unstorage_47drivers_47fs({"driver":"fs","base":"/Users/ousa/Desktop/Nuxt_3/.data/kv"}));
 
 function useStorage(base = "") {
   return base ? prefixStorage(storage, base) : storage;
@@ -699,6 +699,17 @@ getContext("nitro-app", {
   AsyncLocalStorage: void 0
 });
 
+function isPathInScope(pathname, base) {
+  let canonical;
+  try {
+    const pre = pathname.replace(/%2f/gi, "/").replace(/%5c/gi, "\\");
+    canonical = new URL(pre, "http://_").pathname;
+  } catch {
+    return false;
+  }
+  return !base || canonical === base || canonical.startsWith(base + "/");
+}
+
 const config = useRuntimeConfig();
 const _routeRulesMatcher = toRouteMatcher(
   createRouter({ routes: config.nitro.routeRules })
@@ -715,7 +726,12 @@ function createRouteRulesHandler(ctx) {
         let targetPath = event.path;
         const strpBase = routeRules.redirect._redirectStripBase;
         if (strpBase) {
+          if (!isPathInScope(event.path.split("?")[0], strpBase)) {
+            throw createError({ statusCode: 400 });
+          }
           targetPath = withoutBase(targetPath, strpBase);
+        } else if (targetPath.startsWith("//")) {
+          targetPath = targetPath.replace(/^\/+/, "/");
         }
         target = joinURL(target.slice(0, -3), targetPath);
       } else if (event.path.includes("?")) {
@@ -730,7 +746,12 @@ function createRouteRulesHandler(ctx) {
         let targetPath = event.path;
         const strpBase = routeRules.proxy._proxyStripBase;
         if (strpBase) {
+          if (!isPathInScope(event.path.split("?")[0], strpBase)) {
+            throw createError({ statusCode: 400 });
+          }
           targetPath = withoutBase(targetPath, strpBase);
+        } else if (targetPath.startsWith("//")) {
+          targetPath = targetPath.replace(/^\/+/, "/");
         }
         target = joinURL(target.slice(0, -3), targetPath);
       } else if (event.path.includes("?")) {
@@ -2015,7 +2036,7 @@ async function errorHandler(error, event) {
   // H3 will handle fallback
 }
 
-const rootDir = "/home/ousachea/nuxt";
+const rootDir = "/Users/ousa/Desktop/Nuxt_3";
 
 const appHead = {"meta":[{"name":"viewport","content":"width=device-width, initial-scale=1"},{"charset":"utf-8"}],"link":[],"style":[],"script":[],"noscript":[]};
 
@@ -2040,7 +2061,7 @@ const asyncContext = getContext("nuxt-dev", {
 	asyncContext: true,
 	AsyncLocalStorage
 });
-const _RXryLPPxXNUfMn2pmRikzhU5kjb653vhI1Ybo5z7D5k = (nitroApp) => {
+const _OS3E4sbglIfuEV71mYusLKEdnQOW3IT0SM7rTUNYo = (nitroApp) => {
 	const handler = nitroApp.h3App.handler;
 	nitroApp.h3App.handler = (event) => {
 		return asyncContext.callAsync({
@@ -2114,7 +2135,7 @@ function onConsoleLog(callback) {
 }
 
 const plugins = [
-  _RXryLPPxXNUfMn2pmRikzhU5kjb653vhI1Ybo5z7D5k,
+  _OS3E4sbglIfuEV71mYusLKEdnQOW3IT0SM7rTUNYo,
 _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw
 ];
 
@@ -2143,7 +2164,7 @@ function getAsset (id) {
 
 const METHODS = /* @__PURE__ */ new Set(["HEAD", "GET"]);
 const EncodingMap = { gzip: ".gz", br: ".br" };
-const _j6OP03 = eventHandler((event) => {
+const _RJw9ni = eventHandler((event) => {
   if (event.method && !METHODS.has(event.method)) {
     return;
   }
@@ -2287,7 +2308,7 @@ const APP_ROOT_CLOSE_TAG = `</${appRootTag}>`;
 // @ts-expect-error file will be produced after app build
 const getServerEntry = () => Promise.resolve().then(function () { return server$1; }).then((r) => r.default || r);
 // @ts-expect-error file will be produced after app build
-const getClientManifest = () => import('file:///home/ousachea/nuxt/.nuxt//dist/server/client.manifest.mjs').then((r) => r.default || r).then((r) => typeof r === "function" ? r() : r);
+const getClientManifest = () => import('file:///Users/ousa/Desktop/Nuxt_3/.nuxt//dist/server/client.manifest.mjs').then((r) => r.default || r).then((r) => typeof r === "function" ? r() : r);
 // -- SSR Renderer --
 const getSSRRenderer = lazyCachedFunction(async () => {
 	// Load server bundle
@@ -2578,19 +2599,19 @@ async function getIslandContext(event) {
 	};
 }
 
-const _lazy_ZZpsHN = () => Promise.resolve().then(function () { return downloadTest_get$1; });
-const _lazy_IrOgRa = () => Promise.resolve().then(function () { return ping_get$1; });
-const _lazy_8huWrE = () => Promise.resolve().then(function () { return uploadTest_post$1; });
-const _lazy_ZZf_xQ = () => Promise.resolve().then(function () { return renderer; });
+const _lazy_9g3x2D = () => Promise.resolve().then(function () { return downloadTest_get$1; });
+const _lazy_5WTFwa = () => Promise.resolve().then(function () { return ping_get$1; });
+const _lazy_LF6T1U = () => Promise.resolve().then(function () { return uploadTest_post$1; });
+const _lazy_iDxLey = () => Promise.resolve().then(function () { return renderer; });
 
 const handlers = [
-  { route: '', handler: _j6OP03, lazy: false, middleware: true, method: undefined },
-  { route: '/api/download-test', handler: _lazy_ZZpsHN, lazy: true, middleware: false, method: "get" },
-  { route: '/api/ping', handler: _lazy_IrOgRa, lazy: true, middleware: false, method: "get" },
-  { route: '/api/upload-test', handler: _lazy_8huWrE, lazy: true, middleware: false, method: "post" },
-  { route: '/__nuxt_error', handler: _lazy_ZZf_xQ, lazy: true, middleware: false, method: undefined },
+  { route: '', handler: _RJw9ni, lazy: false, middleware: true, method: undefined },
+  { route: '/api/download-test', handler: _lazy_9g3x2D, lazy: true, middleware: false, method: "get" },
+  { route: '/api/ping', handler: _lazy_5WTFwa, lazy: true, middleware: false, method: "get" },
+  { route: '/api/upload-test', handler: _lazy_LF6T1U, lazy: true, middleware: false, method: "post" },
+  { route: '/__nuxt_error', handler: _lazy_iDxLey, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: handler$1, lazy: false, middleware: false, method: undefined },
-  { route: '/**', handler: _lazy_ZZf_xQ, lazy: true, middleware: false, method: undefined }
+  { route: '/**', handler: _lazy_iDxLey, lazy: true, middleware: false, method: undefined }
 ];
 
 function createNitroApp() {
