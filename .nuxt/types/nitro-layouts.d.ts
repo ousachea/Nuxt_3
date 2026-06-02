@@ -1,4 +1,4 @@
-export type LayoutKey = "default"
+export type LayoutKey = "budget" | "default"
 declare module 'nitropack' {
   interface NitroRouteConfig {
     appLayout?: LayoutKey | false

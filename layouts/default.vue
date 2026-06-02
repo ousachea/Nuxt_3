@@ -1,12 +1,12 @@
 <template>
   <div class="site">
     <header class="nav">
-      <NuxtLink to="/" class="nav-logo">Portfolio</NuxtLink>
-      <nav class="nav-links">
-        <NuxtLink to="/" class="nav-link">Home</NuxtLink>
-        <NuxtLink to="/about" class="nav-link">About</NuxtLink>
-        <NuxtLink to="/contact" class="nav-link">Contact</NuxtLink>
-      </nav>
+      <NuxtLink to="/" class="nav-logo">
+        <svg class="nav-home-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M1 6.5L7 1l6 5.5V13H9.5v-3.5h-5V13H1V6.5z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+        </svg>
+        Home
+      </NuxtLink>
     </header>
     <main class="main">
       <slot />
@@ -60,7 +60,6 @@ a { color: inherit; text-decoration: none; }
   z-index: 100;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 1.25rem 2.5rem;
   background: rgba(250, 250, 249, 0.88);
   backdrop-filter: blur(12px);
@@ -68,15 +67,10 @@ a { color: inherit; text-decoration: none; }
 }
 
 .nav-logo {
-  font-family: var(--font-serif);
-  font-size: 1.25rem;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-}
-
-.nav-links { display: flex; gap: 2.5rem; }
-
-.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
   font-size: 0.8125rem;
   font-weight: 400;
   letter-spacing: 0.08em;
@@ -85,8 +79,9 @@ a { color: inherit; text-decoration: none; }
   transition: color 0.2s;
 }
 
-.nav-link:hover,
-.nav-link.router-link-exact-active { color: var(--black); }
+.nav-logo:hover { color: var(--black); }
+
+.nav-home-icon { flex-shrink: 0; }
 
 /* MAIN */
 .main { flex: 1; }

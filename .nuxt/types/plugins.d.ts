@@ -6,6 +6,7 @@ type Decorate<T extends Record<string, any>> = { [K in keyof T as K extends stri
 type InjectionType<A extends Plugin> = A extends {default: Plugin<infer T>} ? Decorate<T> : unknown
 
 type NuxtAppInjections = 
+  InjectionType<typeof import("../../node_modules/.pnpm/@pinia+nuxt@0.11.3_magicast@0.5.3_pinia@3.0.4_vue@3.5.35_/node_modules/@pinia/nuxt/dist/runtime/payload-plugin.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/plugins/revive-payload.client.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/head/runtime/plugins/unhead.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/pages/runtime/plugins/router.js")> &
@@ -15,17 +16,19 @@ type NuxtAppInjections =
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/plugins/check-outdated-build.client.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/plugins/revive-payload.server.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/plugins/chunk-reload.client.js")> &
+  InjectionType<typeof import("../../node_modules/.pnpm/@pinia+nuxt@0.11.3_magicast@0.5.3_pinia@3.0.4_vue@3.5.35_/node_modules/@pinia/nuxt/dist/runtime/plugin.vue3.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/pages/runtime/plugins/prefetch.client.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/pages/runtime/plugins/check-if-page-unused.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/plugins/warn.dev.server.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/plugins/check-if-layout-used.js")> &
+  InjectionType<typeof import("../../plugins/apexcharts.client")> &
   InjectionType<typeof import("../../plugins/firebase.client")>
 
 declare module '#app' {
   interface NuxtApp extends NuxtAppInjections { }
 
   interface NuxtAppLiterals {
-    pluginName: 'nuxt:revive-payload:client' | 'nuxt:head' | 'nuxt:router' | 'nuxt:browser-devtools-timing' | 'nuxt:revive-payload:server' | 'nuxt:chunk-reload' | 'nuxt:global-components' | 'nuxt:prefetch' | 'nuxt:checkIfPageUnused' | 'nuxt:checkIfLayoutUsed'
+    pluginName: 'nuxt:revive-payload:client' | 'nuxt:head' | 'nuxt:router' | 'nuxt:browser-devtools-timing' | 'nuxt:revive-payload:server' | 'nuxt:chunk-reload' | 'pinia' | 'nuxt:global-components' | 'nuxt:prefetch' | 'nuxt:checkIfPageUnused' | 'nuxt:checkIfLayoutUsed'
   }
 }
 
