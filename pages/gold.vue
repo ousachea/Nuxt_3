@@ -685,6 +685,18 @@ const PRE_PURCHASES = [
     { id: 'pre_9', weight: 10, unit: 'chi', price: 4900, date: '2024-01-01' },
 ]
 
+// ─── Pre-loaded purchases (standard user vault) ──────────────────────────────
+// Example hash for password "user123" (Generate your own SHA-256 hash as needed)
+const USER_PW_HASH = 'f3d688238d76ea5e57f5599393e566870c54ace15c5c1d105482ca1a8356b65b' 
+const USER_PRE_PURCHASES = [
+    { id: 'user_pre_1', weight: 5, unit: 'hun', price: 295, date: '2025-02-10' },
+    { id: 'user_pre_2', weight: 15, unit: 'hun', price: 853.5, date: '2025-05-14' },
+    { id: 'user_pre_3', weight: 5, unit: 'hun', price: 283.5, date: '2026-01-20' },
+    { id: 'user_pre_4', weight: 2, unit: 'chi', price: 988, date: '2026-01-20' },
+    
+]
+
+
 // ─── State ────────────────────────────────────────────────────────────────────
 const lang = ref('en')
 const isDark = ref(true)
@@ -831,6 +843,7 @@ const sparklineTimeRange = computed(() => {
 
 // ─── Password State ───────────────────────────────────────────────────────────
 const isOwner = ref(false)
+const isStandardUser = ref(false)
 const showPwModal = ref(false)
 const pwInput = ref('')
 const pwError = ref('')
@@ -1106,19 +1119,33 @@ async function unlockFromModal() {
         setTimeout(() => pwShake.value = false, 600)
         return
     }
+    
     const hash = await sha256(pwInput.value)
+    
+    // 1. Check for OWNER profile
     if (hash === OWNER_PW_HASH) {
         isOwner.value = true
+        isStandardUser.value = false
+        
         const extra = JSON.parse(localStorage.getItem('gt4_owner_extra') || '[]')
-        // merge: keep any user-added purchases, prepend PRE_PURCHASES
         const existingIds = new Set(PRE_PURCHASES.map(p => p.id))
         const userAdded = purchases.value.filter(p => !existingIds.has(p.id))
+        
         purchases.value = [...PRE_PURCHASES, ...extra, ...userAdded]
-        pwUnlockBurst.value = true
-        setTimeout(() => pwUnlockBurst.value = false, 800)
-        pwInput.value = ''; pwError.value = ''
-        showPwModal.value = false
-        setTimeout(() => animatePortfolio(), 120)
+        successfulUnlock()
+        
+    // 2. Check for STANDARD USER profile
+    } else if (hash === USER_PW_HASH) {
+        isStandardUser.value = true
+        isOwner.value = false
+        
+        const existingIds = new Set(USER_PRE_PURCHASES.map(p => p.id))
+        const userAdded = purchases.value.filter(p => !existingIds.has(p.id))
+        
+        // Prepend the new user-specific vault assets instead
+        purchases.value = [...USER_PRE_PURCHASES, ...userAdded]
+        successfulUnlock()
+        
     } else {
         pwError.value = 'Incorrect password'
         pwShake.value = false
@@ -1127,11 +1154,25 @@ async function unlockFromModal() {
     }
 }
 
+// Helper abstraction to keep the unlock function clean
+function successfulUnlock() {
+    pwUnlockBurst.value = true
+    setTimeout(() => pwUnlockBurst.value = false, 800)
+    pwInput.value = ''
+    pwError.value = ''
+    showPwModal.value = false
+    setTimeout(() => animatePortfolio(), 120)
+}
+
 function lockFromModal() {
     isOwner.value = false
-    // remove PRE_PURCHASES, keep only user-added
-    const existingIds = new Set(PRE_PURCHASES.map(p => p.id))
-    purchases.value = purchases.value.filter(p => !existingIds.has(p.id))
+    isStandardUser.value = false
+    
+    // Clean out both sets of IDs to restore back to the anonymous local state
+    const ownerIds = new Set(PRE_PURCHASES.map(p => p.id))
+    const userIds = new Set(USER_PRE_PURCHASES.map(p => p.id))
+    
+    purchases.value = purchases.value.filter(p => !ownerIds.has(p.id) && !userIds.has(p.id))
     showPwModal.value = false
     save()
 }
