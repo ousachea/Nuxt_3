@@ -689,13 +689,11 @@ const PRE_PURCHASES = [
 // Example hash for password "user123" (Generate your own SHA-256 hash as needed)
 const USER_PW_HASH = 'f3d688238d76ea5e57f5599393e566870c54ace15c5c1d105482ca1a8356b65b' 
 const USER_PRE_PURCHASES = [
-    { id: 'user_pre_1', weight: 5, unit: 'hun', price: 295, date: '2025-02-10' },
-    { id: 'user_pre_2', weight: 1.5, unit: 'chi', price: 853.5, date: '2025-05-14' },
-    { id: 'user_pre_3', weight: 5, unit: 'hun', price: 283.5, date: '2026-01-20' },
-    { id: 'user_pre_4', weight: 2, unit: 'chi', price: 988, date: '2026-01-20' },
-    { id: 'user_pre_5', weight: 5, unit: 'hun', price: 988, date: '2026-01-20' },
-    
-    
+    { id: 'user_pre_1', weight: 0.5, unit: 'chi', price: 246.5, date: '2026-06-12' },
+    { id: 'user_pre_2', weight: 0.5, unit: 'chi', price: 283.5, date: '2026-05-10' },
+    { id: 'user_pre_3', weight: 1.5, unit: 'chi', price: 853.5, date: '2026-04-25' },
+    { id: 'user_pre_4', weight: 0.5, unit: 'chi', price: 295, date: '2026-03-25' },
+    { id: 'user_pre_5', weight: 2, unit: 'chi', price: 988, date: '2025-11-25' },
 ]
 
 
