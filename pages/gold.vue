@@ -41,7 +41,7 @@
                                 <div class="pw-icon" :class="{ shake: pwShake }">🔒</div>
                             </div>
                         </div>
-                        <input v-model="pwInput" class="text-input" type="password" :placeholder="t.enterPw"
+                        <input ref="pwInputEl" v-model="pwInput" class="text-input" type="password" :placeholder="t.enterPw"
                             @keyup.enter="unlockFromModal" autocomplete="current-password" />
                         <transition name="fade">
                             <p v-if="pwError" class="pw-error">{{ pwError }}</p>
@@ -743,6 +743,11 @@ let rafId = null
 function animateCounterTo(target, duration = 900) {
     if (rafId) cancelAnimationFrame(rafId)
     const start = animatedPrice.value || target
+    if (Math.abs(start - target) < 0.01) {
+        animatedPrice.value = target
+        rafId = null
+        return Promise.resolve()
+    }
     const startTime = performance.now()
     return new Promise(resolve => {
         function step(now) {
@@ -846,6 +851,7 @@ const isOwner = ref(false)
 const isStandardUser = ref(false)
 const showPwModal = ref(false)
 const pwInput = ref('')
+const pwInputEl = ref(null)
 const pwError = ref('')
 const pwShake = ref(false)
 const pwUnlockBurst = ref(false)
@@ -1105,10 +1111,12 @@ async function sha256(str) {
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-function openPwModal() {
+async function openPwModal() {
     showPwModal.value = true
     pwInput.value = ''
     pwError.value = ''
+    await nextTick()
+    pwInputEl.value?.focus()
 }
 
 async function unlockFromModal() {
@@ -1340,6 +1348,7 @@ watch(screensaver, v => { v ? startSSClock() : stopSSClock() })
 watch(autoRefreshInterval, () => { startAutoRefresh(); save() })
 
 watch(displayPrice, () => {
+    startPriceRenderLoop()
     if (purchases.value.length) {
         displayInvested.value = totalInvested.value
         displayCurrent.value = totalCurrent.value
@@ -1360,16 +1369,18 @@ const renderedPrice = ref(null)
 let renderRafId = null
 
 function startPriceRenderLoop() {
+    if (renderRafId) return
     function loop() {
         const target = displayPrice.value
-        if (target == null) { renderRafId = requestAnimationFrame(loop); return }
-        if (renderedPrice.value == null) { renderedPrice.value = target }
+        if (target == null) { renderRafId = null; return }
+        if (renderedPrice.value == null) { renderedPrice.value = target; renderRafId = null; return }
         const diff = target - renderedPrice.value
         if (Math.abs(diff) < 0.005) {
             renderedPrice.value = target
-        } else {
-            renderedPrice.value += diff * 0.12
+            renderRafId = null
+            return
         }
+        renderedPrice.value += diff * 0.12
         renderRafId = requestAnimationFrame(loop)
     }
     renderRafId = requestAnimationFrame(loop)
@@ -1446,8 +1457,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-
 *,
 *::before,
 *::after {
@@ -1655,6 +1664,7 @@ onBeforeUnmount(() => {
     border-radius: 50%;
     filter: blur(90px);
     opacity: 0.13;
+    will-change: transform;
 }
 
 .orb-1 {

@@ -38,3 +38,4 @@ export { useBudgetStore } from '../stores/budget';
 export { useExpenseStore } from '../stores/expenses';
 export { useGamificationStore } from '../stores/gamification';
 export { defineStore, acceptHMRUpdate, usePinia, storeToRefs } from '../node_modules/.pnpm/@pinia+nuxt@0.11.3_magicast@0.5.3_pinia@3.0.4_vue@3.5.35_/node_modules/@pinia/nuxt/dist/runtime/composables';
+export { usePWA, useTransparentPwaIcon, useMaskablePwaIcon, useFaviconPwaIcon, useApplePwaIcon, useAppleSplashScreenPwaIcon } from '../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index';

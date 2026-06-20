@@ -162,6 +162,8 @@ declare global {
   const useActiveElement: typeof import('@vueuse/core').useActiveElement
   const useAnimate: typeof import('@vueuse/core').useAnimate
   const useAppConfig: typeof import('../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/config').useAppConfig
+  const useApplePwaIcon: typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').useApplePwaIcon
+  const useAppleSplashScreenPwaIcon: typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').useAppleSplashScreenPwaIcon
   const useArrayDifference: typeof import('@vueuse/core').useArrayDifference
   const useArrayEvery: typeof import('@vueuse/core').useArrayEvery
   const useArrayFilter: typeof import('@vueuse/core').useArrayFilter
@@ -226,6 +228,7 @@ declare global {
   const useExpenseStore: typeof import('../../stores/expenses').useExpenseStore
   const useEyeDropper: typeof import('@vueuse/core').useEyeDropper
   const useFavicon: typeof import('@vueuse/core').useFavicon
+  const useFaviconPwaIcon: typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').useFaviconPwaIcon
   const useFetch: typeof import('../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/composables/fetch').useFetch
   const useFileDialog: typeof import('@vueuse/core').useFileDialog
   const useFileSystemAccess: typeof import('@vueuse/core').useFileSystemAccess
@@ -255,6 +258,7 @@ declare global {
   const useLocalStorage: typeof import('@vueuse/core').useLocalStorage
   const useMagicKeys: typeof import('@vueuse/core').useMagicKeys
   const useManualRefHistory: typeof import('@vueuse/core').useManualRefHistory
+  const useMaskablePwaIcon: typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').useMaskablePwaIcon
   const useMediaControls: typeof import('@vueuse/core').useMediaControls
   const useMediaQuery: typeof import('@vueuse/core').useMediaQuery
   const useMemoize: typeof import('@vueuse/core').useMemoize
@@ -273,6 +277,7 @@ declare global {
   const useObjectUrl: typeof import('@vueuse/core').useObjectUrl
   const useOffsetPagination: typeof import('@vueuse/core').useOffsetPagination
   const useOnline: typeof import('@vueuse/core').useOnline
+  const usePWA: typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').usePWA
   const usePageLeave: typeof import('@vueuse/core').usePageLeave
   const useParallax: typeof import('@vueuse/core').useParallax
   const useParentElement: typeof import('@vueuse/core').useParentElement
@@ -377,6 +382,7 @@ declare global {
   const useToggle: typeof import('@vueuse/core').useToggle
   const useTransition: typeof import('@vueuse/core').useTransition
   const useTransitionState: typeof import('vue').useTransitionState
+  const useTransparentPwaIcon: typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').useTransparentPwaIcon
   const useUrlSearchParams: typeof import('@vueuse/core').useUrlSearchParams
   const useUserMedia: typeof import('@vueuse/core').useUserMedia
   const useVModel: typeof import('@vueuse/core').useVModel
@@ -585,6 +591,8 @@ declare module 'vue' {
     readonly useActiveElement: UnwrapRef<typeof import('@vueuse/core')['useActiveElement']>
     readonly useAnimate: UnwrapRef<typeof import('@vueuse/core')['useAnimate']>
     readonly useAppConfig: UnwrapRef<typeof import('../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/config')['useAppConfig']>
+    readonly useApplePwaIcon: UnwrapRef<typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['useApplePwaIcon']>
+    readonly useAppleSplashScreenPwaIcon: UnwrapRef<typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['useAppleSplashScreenPwaIcon']>
     readonly useArrayDifference: UnwrapRef<typeof import('@vueuse/core')['useArrayDifference']>
     readonly useArrayEvery: UnwrapRef<typeof import('@vueuse/core')['useArrayEvery']>
     readonly useArrayFilter: UnwrapRef<typeof import('@vueuse/core')['useArrayFilter']>
@@ -649,6 +657,7 @@ declare module 'vue' {
     readonly useExpenseStore: UnwrapRef<typeof import('../../stores/expenses')['useExpenseStore']>
     readonly useEyeDropper: UnwrapRef<typeof import('@vueuse/core')['useEyeDropper']>
     readonly useFavicon: UnwrapRef<typeof import('@vueuse/core')['useFavicon']>
+    readonly useFaviconPwaIcon: UnwrapRef<typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['useFaviconPwaIcon']>
     readonly useFetch: UnwrapRef<typeof import('../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/composables/fetch')['useFetch']>
     readonly useFileDialog: UnwrapRef<typeof import('@vueuse/core')['useFileDialog']>
     readonly useFileSystemAccess: UnwrapRef<typeof import('@vueuse/core')['useFileSystemAccess']>
@@ -678,6 +687,7 @@ declare module 'vue' {
     readonly useLocalStorage: UnwrapRef<typeof import('@vueuse/core')['useLocalStorage']>
     readonly useMagicKeys: UnwrapRef<typeof import('@vueuse/core')['useMagicKeys']>
     readonly useManualRefHistory: UnwrapRef<typeof import('@vueuse/core')['useManualRefHistory']>
+    readonly useMaskablePwaIcon: UnwrapRef<typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['useMaskablePwaIcon']>
     readonly useMediaControls: UnwrapRef<typeof import('@vueuse/core')['useMediaControls']>
     readonly useMediaQuery: UnwrapRef<typeof import('@vueuse/core')['useMediaQuery']>
     readonly useMemoize: UnwrapRef<typeof import('@vueuse/core')['useMemoize']>
@@ -696,6 +706,7 @@ declare module 'vue' {
     readonly useObjectUrl: UnwrapRef<typeof import('@vueuse/core')['useObjectUrl']>
     readonly useOffsetPagination: UnwrapRef<typeof import('@vueuse/core')['useOffsetPagination']>
     readonly useOnline: UnwrapRef<typeof import('@vueuse/core')['useOnline']>
+    readonly usePWA: UnwrapRef<typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['usePWA']>
     readonly usePageLeave: UnwrapRef<typeof import('@vueuse/core')['usePageLeave']>
     readonly useParallax: UnwrapRef<typeof import('@vueuse/core')['useParallax']>
     readonly useParentElement: UnwrapRef<typeof import('@vueuse/core')['useParentElement']>
@@ -800,6 +811,7 @@ declare module 'vue' {
     readonly useToggle: UnwrapRef<typeof import('@vueuse/core')['useToggle']>
     readonly useTransition: UnwrapRef<typeof import('@vueuse/core')['useTransition']>
     readonly useTransitionState: UnwrapRef<typeof import('vue')['useTransitionState']>
+    readonly useTransparentPwaIcon: UnwrapRef<typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['useTransparentPwaIcon']>
     readonly useUrlSearchParams: UnwrapRef<typeof import('@vueuse/core')['useUrlSearchParams']>
     readonly useUserMedia: UnwrapRef<typeof import('@vueuse/core')['useUserMedia']>
     readonly useVModel: UnwrapRef<typeof import('@vueuse/core')['useVModel']>

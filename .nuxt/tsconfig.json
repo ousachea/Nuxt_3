@@ -106,6 +106,9 @@
       "vue-demi": [
         "../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/compat/vue-demi"
       ],
+      "#pwa": [
+        "../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index"
+      ],
       "#vue-router": [
         "../node_modules/.pnpm/vue-router@5.1.0_@vue+compiler-sfc@3.5.35_pinia@3.0.4_vue@3.5.35__vite@7.3.3_@types+nod_8aa14a86f5b9904c51b506b8d8875f3a/node_modules/vue-router"
       ],
@@ -167,6 +170,8 @@
     "../node_modules/.pnpm/@nuxtjs+tailwindcss@6.14.0_magicast@0.5.3_yaml@2.9.0/node_modules/dist/runtime",
     "../node_modules/.pnpm/@vueuse+nuxt@14.3.0_magicast@0.5.3_nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10_822e862e283681e9d392c6ea3e0488a1/node_modules/runtime",
     "../node_modules/.pnpm/@vueuse+nuxt@14.3.0_magicast@0.5.3_nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10_822e862e283681e9d392c6ea3e0488a1/node_modules/dist/runtime",
+    "../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/runtime",
+    "../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/dist/runtime",
     "../node_modules/.pnpm/@nuxt+telemetry@2.8.0_@nuxt+kit@3.21.2_magicast@0.5.3_/node_modules/runtime",
     "../node_modules/.pnpm/@nuxt+telemetry@2.8.0_@nuxt+kit@3.21.2_magicast@0.5.3_/node_modules/dist/runtime",
     ".."
@@ -180,6 +185,8 @@
     "../node_modules/.pnpm/@nuxtjs+tailwindcss@6.14.0_magicast@0.5.3_yaml@2.9.0/node_modules/dist/runtime/server",
     "../node_modules/.pnpm/@vueuse+nuxt@14.3.0_magicast@0.5.3_nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10_822e862e283681e9d392c6ea3e0488a1/node_modules/runtime/server",
     "../node_modules/.pnpm/@vueuse+nuxt@14.3.0_magicast@0.5.3_nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10_822e862e283681e9d392c6ea3e0488a1/node_modules/dist/runtime/server",
+    "../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/runtime/server",
+    "../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/dist/runtime/server",
     "../node_modules/.pnpm/@nuxt+telemetry@2.8.0_@nuxt+kit@3.21.2_magicast@0.5.3_/node_modules/runtime/server",
     "../node_modules/.pnpm/@nuxt+telemetry@2.8.0_@nuxt+kit@3.21.2_magicast@0.5.3_/node_modules/dist/runtime/server",
     "dev"

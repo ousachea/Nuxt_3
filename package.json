@@ -29,6 +29,7 @@
 		"vue3-apexcharts": "^1.11.1"
 	},
 	"devDependencies": {
+		"@vite-pwa/nuxt": "^1.1.1",
 		"jsrepo": "^3.7.0",
 		"playwright": "^1.60.0"
 	}
