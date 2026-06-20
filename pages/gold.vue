@@ -661,6 +661,9 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+
+const { $goldDb } = useNuxtApp()
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TROY = 31.1035
@@ -1197,6 +1200,22 @@ function scrollToPurchases() {
     }
 }
 
+// ─── Firestore ────────────────────────────────────────────────────────────────
+async function saveGoldPrice(price) {
+    try {
+        await addDoc(collection($goldDb, 'gold_prices'), {
+            price,
+            pricePerGram: price / TROY,
+            pricePerChi: (price / TROY) * CHI,
+            pricePerDamlung: (price / TROY) * DAMLUNG,
+            timestamp: serverTimestamp(),
+            fetchedAt: new Date().toISOString(),
+        })
+    } catch (e) {
+        console.warn('Firestore save failed:', e)
+    }
+}
+
 // ─── Price Fetch ──────────────────────────────────────────────────────────────
 async function fetchPrice() {
     loading.value = true
@@ -1229,6 +1248,7 @@ async function fetchPrice() {
         animateCounterTo(goldPrice.value)
         save(); flash(t.value.pricesUpdated)
         startPriceSim()
+        saveGoldPrice(goldPrice.value)
     } else {
         const cached = load()?.goldPrice
         if (cached) {
