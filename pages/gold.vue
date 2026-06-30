@@ -126,9 +126,7 @@
 
                     <!-- ── PRICE SECTION ── -->
                     <BorderGlow class="card price-hero" id="section-price"
-                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
-                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
-                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
+                        v-bind="goldGlow">
                         <!-- Source Toggle -->
                         <div class="seg-ctrl">
                             <button class="seg-btn" :class="{ active: priceSource === 'api' }"
@@ -203,7 +201,7 @@
 
                         <!-- Per-unit chips -->
                         <div v-if="displayPrice" class="chips-grid" :key="displayPrice">
-                            <div v-for="(u, idx) in priceUnits" :key="u.key" class="chip chip-shimmer"
+                            <div v-for="(u, idx) in allUnits" :key="u.key" class="chip chip-shimmer"
                                 :style="{ animationDelay: (idx * 0.08) + 's' }">
                                 <div class="shimmer-line"></div>
                                 <span class="chip-label">{{ t[u.key] || u.label }}</span>
@@ -277,9 +275,7 @@
 
                     <!-- ── CONVERTER ── -->
                     <BorderGlow class="card"
-                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
-                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
-                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
+                        v-bind="goldGlow">
                         <h2 class="section-title">{{ t.unitConverter }}</h2>
 
                         <div class="conv-tabs-scroll">
@@ -316,9 +312,7 @@
 
                     <!-- ── PRICE GRID ── -->
                     <BorderGlow class="card"
-                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
-                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
-                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
+                        v-bind="goldGlow">
                         <div class="section-header">
                             <h2 class="section-title">{{ t.priceByUnit }}</h2>
                             <span v-if="displayPrice && convInput && convInput !== 1" class="conv-qty-badge">
@@ -333,7 +327,7 @@
                             <span class="conv-total-val">${{ convValueUSD.toFixed(2) }}</span>
                         </div>
                         <div v-if="displayPrice" class="unit-grid">
-                            <div v-for="u in allUnitsScaled" :key="u.key" class="unit-tile">
+                            <div v-for="u in allUnits" :key="u.key" class="unit-tile">
                                 <div class="tile-top">
                                     <span class="tile-name">{{ t[u.key] || u.label }}</span>
                                     <span class="tile-gram">{{ u.gram }}</span>
@@ -359,10 +353,8 @@
                     </BorderGlow>
 
                     <!-- ── PURCHASES ── -->
-                    <BorderGlow class="card" id="purchases-section" :class="{ 'section-glow': purchasesGlow }"
-                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
-                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
-                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
+                    <BorderGlow class="card" id="purchases-section"
+                        v-bind="goldGlow">
                         <div class="section-header">
                             <h2 class="section-title">{{ t.myPurchases }}</h2>
                             <div class="section-actions">
@@ -438,14 +430,7 @@
                                     :key="p.id"
                                     class="p-card-stagger"
                                     :style="{ animationDelay: (i * 0.07) + 's' }"
-                                    :colors="gainLoss(p) >= 0 ? ['#22C55E', '#4ade80', '#16a34a'] : ['#F87171', '#ef4444', '#dc2626']"
-                                    :glowColor="gainLoss(p) >= 0 ? '142 71 55' : '0 84 70'"
-                                    :backgroundColor="isDark ? '#1A1A26' : '#F9F7F2'"
-                                    :borderRadius="14"
-                                    :glowIntensity="0.9"
-                                    :fillOpacity="0.2"
-                                    :glowRadius="28"
-                                    :coneSpread="20"
+                                    v-bind="pCardGlow(p)"
                                 >
                                     <div class="p-card" :style="{
                                         border: 'none',
@@ -544,9 +529,7 @@
 
                     <!-- Portfolio KPI Cards -->
                     <BorderGlow class="card summary-card" v-if="purchases.length" id="section-portfolio"
-                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
-                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
-                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
+                        v-bind="goldGlow">
                         <h2 class="section-title">{{ t.portfolioSummary }}</h2>
 
                         <div class="kpi-stack">
@@ -579,9 +562,7 @@
 
                     <!-- Per-purchase breakdown table -->
                     <BorderGlow class="card" v-if="purchases.length && displayPrice"
-                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
-                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
-                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
+                        v-bind="goldGlow">
                         <h2 class="section-title">Holdings</h2>
                         <div class="holdings-table">
                             <div class="ht-header">
@@ -604,9 +585,7 @@
 
                     <!-- Damlung price quick-ref -->
                     <BorderGlow class="card" v-if="displayPrice"
-                        :colors="['#F5C842', '#C08A10', '#FFD700']" glowColor="45 90 61"
-                        :backgroundColor="isDark ? '#13131C' : '#FFFFFF'"
-                        :borderRadius="20" :glowIntensity="0.7" :fillOpacity="0.1" :glowRadius="32" :coneSpread="22">
+                        v-bind="goldGlow">
                         <h2 class="section-title">Quick Reference</h2>
                         <div class="qref-list">
                             <div class="qref-section-label">Chi</div>
@@ -673,6 +652,7 @@ const HUN = 0.375
 const LI = 0.0375
 
 const converterUnits = ['li', 'hun', 'chi', 'gram', 'damlung', 'troyOz']
+const UNIT_GRAMS = { li: LI, hun: HUN, chi: CHI, gram: 1, damlung: DAMLUNG, troyOz: TROY }
 
 // ─── Pre-loaded purchases (owner only) ───────────────────────────────────────
 const OWNER_PW_HASH = '5b91bc1234678bc03abe05d9966d30d1911a16d510605ea015b37cd3be316e05'
@@ -851,14 +831,12 @@ const sparklineTimeRange = computed(() => {
 
 // ─── Password State ───────────────────────────────────────────────────────────
 const isOwner = ref(false)
-const isStandardUser = ref(false)
 const showPwModal = ref(false)
 const pwInput = ref('')
 const pwInputEl = ref(null)
 const pwError = ref('')
 const pwShake = ref(false)
 const pwUnlockBurst = ref(false)
-const purchasesGlow = ref(false)
 
 // ─── Portfolio count-up display values ───────────────────────────────────────
 const displayInvested = ref(0)
@@ -934,7 +912,7 @@ const translations = {
         paste: 'Paste',
         clear: 'Clear',
         gram: 'Gram', li: 'Li', hun: 'Hun', chi: 'Chi',
-        damlung: 'Damlung', troyOunce: 'Troy Oz', troyOz: 'Troy Oz',
+        damlung: 'Damlung', troyOz: 'Troy Oz',
         fetchPriceFirst: 'Fetch a price first',
         offlineWarning: 'You are offline — prices may be outdated',
         noPurchases: 'No purchases yet. Tap + Add above.',
@@ -986,7 +964,7 @@ const translations = {
         paste: 'បិទភ្ជាប់',
         clear: 'លុប',
         gram: 'ក្រាម', li: 'លី', hun: 'ហុន', chi: 'ជី',
-        damlung: 'ដំឡឹង', troyOunce: 'ត្រយ អោន', troyOz: 'ត្រយ អោន',
+        damlung: 'ដំឡឹង', troyOz: 'ត្រយ អោន',
         fetchPriceFirst: 'សូមទាញតម្លៃជាមុន',
         offlineWarning: '⚠ ក្រៅបណ្តាញ',
         noPurchases: 'មិនទាន់មានការទិញ។ ចុច + បន្ថែម',
@@ -999,18 +977,36 @@ const translations = {
 }
 const t = computed(() => translations[lang.value])
 
+// ─── Shared BorderGlow presets ──────────────────────────────────────────────
+const goldGlow = computed(() => ({
+    colors: ['#F5C842', '#C08A10', '#FFD700'],
+    glowColor: '45 90 61',
+    backgroundColor: isDark.value ? '#13131C' : '#FFFFFF',
+    borderRadius: 20,
+    glowIntensity: 0.7,
+    fillOpacity: 0.1,
+    glowRadius: 32,
+    coneSpread: 22,
+}))
+
+function pCardGlow(p) {
+    const gain = gainLoss(p) >= 0
+    return {
+        colors: gain ? ['#22C55E', '#4ade80', '#16a34a'] : ['#F87171', '#ef4444', '#dc2626'],
+        glowColor: gain ? '142 71 55' : '0 84 70',
+        backgroundColor: isDark.value ? '#1A1A26' : '#F9F7F2',
+        borderRadius: 14,
+        glowIntensity: 0.9,
+        fillOpacity: 0.2,
+        glowRadius: 28,
+        coneSpread: 20,
+    }
+}
+
 // ─── Price computations ───────────────────────────────────────────────────────
 const pricePerGram = computed(() => displayPrice.value ? displayPrice.value / TROY : 0)
 
 const displayPrice = computed(() => animatedPrice.value ?? goldPrice.value)
-const priceUnits = computed(() => [
-    { key: 'li', label: 'Li', price: renderedPPG.value * LI },
-    { key: 'hun', label: 'Hun', price: renderedPPG.value * HUN },
-    { key: 'chi', label: 'Chi', price: renderedPPG.value * CHI },
-    { key: 'gram', label: 'Gram', price: renderedPPG.value },
-    { key: 'damlung', label: 'Damlung', price: renderedPPG.value * DAMLUNG },
-    { key: 'troyOz', label: 'Troy Oz', price: renderedPrice.value || 0 },
-])
 const allUnits = computed(() => [
     { key: 'li', label: 'Li', price: renderedPPG.value * LI, gram: '0.0375g' },
     { key: 'hun', label: 'Hun', price: renderedPPG.value * HUN, gram: '0.375g' },
@@ -1025,8 +1021,6 @@ const convValueUSD = computed(() => {
     const grams = toGrams(convInput.value, activeConv.value)
     return pricePerGram.value * grams
 })
-
-const allUnitsScaled = computed(() => allUnits.value)
 
 const totalInvested = computed(() => purchases.value.reduce((s, p) => s + p.price, 0))
 const totalCurrent = computed(() => purchases.value.reduce((s, p) => s + currentValue(p), 0))
@@ -1063,12 +1057,8 @@ function today() { return new Date().toISOString().split('T')[0] }
 function toggleLang() { lang.value = lang.value === 'en' ? 'km' : 'en'; save() }
 function toggleDark() { isDark.value = !isDark.value; save() }
 
-function toGrams(w, u) {
-    return w * ({ li: LI, hun: HUN, chi: CHI, gram: 1, damlung: DAMLUNG, troyOz: TROY }[u] || 1)
-}
-function fromGrams(g, u) {
-    return g / ({ li: LI, hun: HUN, chi: CHI, gram: 1, damlung: DAMLUNG, troyOz: TROY }[u] || 1)
-}
+function toGrams(w, u) { return w * (UNIT_GRAMS[u] || 1) }
+function fromGrams(g, u) { return g / (UNIT_GRAMS[u] || 1) }
 function convertUnit(val, from, to) { return fromGrams(toGrams(val, from), to).toFixed(4) }
 function currentValue(p) { return displayPrice.value ? pricePerGram.value * toGrams(p.weight, p.unit) : 0 }
 function gainLoss(p) { return currentValue(p) - p.price }
@@ -1136,8 +1126,7 @@ async function unlockFromModal() {
     // 1. Check for OWNER profile
     if (hash === OWNER_PW_HASH) {
         isOwner.value = true
-        isStandardUser.value = false
-        
+
         const extra = JSON.parse(localStorage.getItem('gt4_owner_extra') || '[]')
         const existingIds = new Set(PRE_PURCHASES.map(p => p.id))
         const userAdded = purchases.value.filter(p => !existingIds.has(p.id))
@@ -1147,9 +1136,8 @@ async function unlockFromModal() {
         
     // 2. Check for STANDARD USER profile
     } else if (hash === USER_PW_HASH) {
-        isStandardUser.value = true
         isOwner.value = false
-        
+
         const existingIds = new Set(USER_PRE_PURCHASES.map(p => p.id))
         const userAdded = purchases.value.filter(p => !existingIds.has(p.id))
         
@@ -1177,8 +1165,7 @@ function successfulUnlock() {
 
 function lockFromModal() {
     isOwner.value = false
-    isStandardUser.value = false
-    
+
     // Clean out both sets of IDs to restore back to the anonymous local state
     const ownerIds = new Set(PRE_PURCHASES.map(p => p.id))
     const userIds = new Set(USER_PRE_PURCHASES.map(p => p.id))
@@ -1186,18 +1173,6 @@ function lockFromModal() {
     purchases.value = purchases.value.filter(p => !ownerIds.has(p.id) && !userIds.has(p.id))
     showPwModal.value = false
     save()
-}
-
-function scrollToPurchases() {
-    const el = document.getElementById('purchases-section')
-    if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        purchasesGlow.value = false
-        setTimeout(() => {
-            purchasesGlow.value = true
-            setTimeout(() => purchasesGlow.value = false, 1000)
-        }, 300)
-    }
 }
 
 // ─── Firestore ────────────────────────────────────────────────────────────────
@@ -1423,9 +1398,7 @@ function save() {
             const extra = purchases.value.filter(p => !PRE_PURCHASES.find(pp => pp.id === p.id))
             localStorage.setItem('gt4_owner_extra', JSON.stringify(extra))
         } else {
-            const userKey = sessionStorage.getItem('gt4_ukey')
-            if (userKey) localStorage.setItem(userKey, JSON.stringify(purchases.value))
-            else localStorage.setItem('gt4_user_purchases', JSON.stringify(purchases.value))
+            localStorage.setItem('gt4_user_purchases', JSON.stringify(purchases.value))
         }
     } catch { }
 }
@@ -3153,15 +3126,6 @@ onBeforeUnmount(() => {
 .burst-r2 { width: 40px; height: 40px; border-color: rgba(245, 200, 66, 0.5); }
 .burst-ring-wrap.burst .burst-r1 { animation: burstRing 0.65s ease-out forwards; }
 .burst-ring-wrap.burst .burst-r2 { animation: burstRing2 0.55s ease-out 0.1s forwards; }
-
-/* ── Section glow ── */
-@keyframes sectionGlow {
-    0% { box-shadow: 0 0 0 0 rgba(245, 200, 66, 0); }
-    30% { box-shadow: 0 0 0 8px rgba(245, 200, 66, 0.2); }
-    100% { box-shadow: 0 0 0 0 rgba(245, 200, 66, 0); }
-}
-
-.section-glow { animation: sectionGlow 0.9s ease-out forwards; }
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 /* DESKTOP BREAKPOINTS                                                       */
