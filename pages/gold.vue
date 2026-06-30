@@ -67,7 +67,7 @@
         <header class="header">
             <div class="header-inner">
                 <div class="logo">
-                    <span class="logo-gem">◈</span>
+                    <span class="logo-gem" :class="{ 'spin-coin': gemSpin }">◈</span>
                     <div class="logo-text">
                         <span class="logo-title">{{ t.title }}</span>
                         <span class="logo-sub">gold portfolio tracker</span>
@@ -188,7 +188,8 @@
                                         </linearGradient>
                                     </defs>
                                     <path :d="sparklinePath + 'V40H4Z'" fill="url(#spark-grad)" />
-                                    <path :d="sparklinePath" fill="none" :stroke="sparklineColor" stroke-width="1.5"
+                                    <path class="spark-stroke" :key="priceHistory.length" pathLength="1"
+                                        :d="sparklinePath" fill="none" :stroke="sparklineColor" stroke-width="1.5"
                                         stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
                                 <div class="sparkline-meta">
@@ -635,6 +636,11 @@
                 <span class="mnav-label">Portfolio</span>
             </button>
         </nav>
+
+        <!-- Gold sparkle burst layer -->
+        <div class="sparkle-layer" aria-hidden="true">
+            <span v-for="s in sparkles" :key="s.id" class="sparkle" :style="s.style">✦</span>
+        </div>
     </div>
 </template>
 
@@ -702,6 +708,54 @@ const draft = ref({ weight: '', unit: 'chi', price: '', date: today() })
 const editIdx = ref(null)
 const editDraft = ref({})
 const csvInput = ref(null)
+
+// ─── Micro-animations ───────────────────────────────────────────────────────
+const gemSpin = ref(false)
+const sparkles = ref([])
+let sparkleSeq = 0
+
+function spinGem() {
+    gemSpin.value = false
+    requestAnimationFrame(() => {
+        gemSpin.value = true
+        setTimeout(() => { gemSpin.value = false }, 750)
+    })
+}
+
+// Emit a short burst of gold sparkles from a screen point (defaults to top-center)
+function burstSparkles(x = window.innerWidth / 2, y = window.innerHeight / 3) {
+    const n = 6
+    const batch = Array.from({ length: n }, (_, i) => {
+        const angle = (Math.PI * 2 * i) / n + Math.random() * 0.6
+        const dist = 42 + Math.random() * 52
+        return {
+            id: ++sparkleSeq,
+            style: {
+                left: x + 'px',
+                top: y + 'px',
+                '--dx': (Math.cos(angle) * dist).toFixed(1) + 'px',
+                '--dy': (Math.sin(angle) * dist).toFixed(1) + 'px',
+                animationDelay: (Math.random() * 0.08).toFixed(3) + 's',
+            },
+        }
+    })
+    sparkles.value.push(...batch)
+    setTimeout(() => {
+        const ids = new Set(batch.map(b => b.id))
+        sparkles.value = sparkles.value.filter(s => !ids.has(s.id))
+    }, 1000)
+}
+
+// Burst from the center of an element matching `selector`, or screen default
+function burstFrom(selector) {
+    const el = document.querySelector(selector)
+    if (el) {
+        const r = el.getBoundingClientRect()
+        burstSparkles(r.left + r.width / 2, r.top + r.height / 2)
+    } else {
+        burstSparkles()
+    }
+}
 
 // ─── Auto-refresh ─────────────────────────────────────────────────────────────
 const autoRefreshInterval = ref(0) // 0=off, 30, 60, 300 (seconds)
@@ -1160,6 +1214,7 @@ function successfulUnlock() {
     pwInput.value = ''
     pwError.value = ''
     showPwModal.value = false
+    burstSparkles()
     setTimeout(() => animatePortfolio(), 120)
 }
 
@@ -1222,6 +1277,7 @@ async function fetchPrice() {
         pushHistory(goldPrice.value)
         animateCounterTo(goldPrice.value)
         save(); flash(t.value.pricesUpdated)
+        spinGem()
         startPriceSim()
         saveGoldPrice(goldPrice.value)
     } else {
@@ -1241,9 +1297,11 @@ async function fetchPrice() {
 function addPurchase() {
     if (!draft.value.weight || !draft.value.price) { flash('Fill in weight and price', 'error'); return }
     const id = Date.now()
-    purchases.value.push({ ...draft.value, id })
+    const entry = { ...draft.value, id }
+    purchases.value.push(entry)
     newestPurchaseId.value = id
     setTimeout(() => { newestPurchaseId.value = null }, 1400)
+    if (gainLoss(entry) >= 0) nextTick(() => burstFrom('#purchases-section .add-purchase-btn'))
     draft.value = { weight: '', unit: 'chi', price: '', date: today() }
     showForm.value = false
     save()
@@ -1748,6 +1806,17 @@ onBeforeUnmount(() => {
     animation: gemPulse 4s ease-in-out infinite;
 }
 
+/* One-shot coin flip when a fresh live price lands (overrides gemPulse) */
+.logo-gem.spin-coin {
+    animation: coinSpin 0.75s cubic-bezier(0.45, 0.05, 0.2, 1);
+}
+
+@keyframes coinSpin {
+    0% { transform: perspective(220px) rotateY(0deg) scale(1); filter: drop-shadow(0 0 0 transparent); }
+    50% { transform: perspective(220px) rotateY(180deg) scale(1.25); filter: drop-shadow(0 0 10px rgba(245, 200, 66, 0.8)); }
+    100% { transform: perspective(220px) rotateY(360deg) scale(1); filter: drop-shadow(0 0 0 transparent); }
+}
+
 @keyframes gemPulse {
     0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 0px transparent); }
     50% { transform: scale(1.15) rotate(45deg); filter: drop-shadow(0 0 6px rgba(245, 200, 66, 0.55)); }
@@ -2098,15 +2167,15 @@ onBeforeUnmount(() => {
 .price-tick-down .price-dollar { animation: tickDown 0.85s ease-out forwards; }
 
 @keyframes tickUp {
-    0% { color: var(--gold); }
-    15% { color: #4ade80; text-shadow: 0 0 16px rgba(74, 222, 128, 0.7); }
-    100% { color: var(--gold); text-shadow: none; }
+    0% { -webkit-text-fill-color: var(--gold); }
+    15% { -webkit-text-fill-color: #4ade80; text-shadow: 0 0 16px rgba(74, 222, 128, 0.7); }
+    100% { -webkit-text-fill-color: var(--gold); text-shadow: none; }
 }
 
 @keyframes tickDown {
-    0% { color: var(--gold); }
-    15% { color: #f87171; text-shadow: 0 0 16px rgba(248, 113, 113, 0.7); }
-    100% { color: var(--gold); text-shadow: none; }
+    0% { -webkit-text-fill-color: var(--gold); }
+    15% { -webkit-text-fill-color: #f87171; text-shadow: 0 0 16px rgba(248, 113, 113, 0.7); }
+    100% { -webkit-text-fill-color: var(--gold); text-shadow: none; }
 }
 
 .price-dollar {
@@ -2123,6 +2192,32 @@ onBeforeUnmount(() => {
     color: var(--gold);
     letter-spacing: -2px;
     font-variant-numeric: tabular-nums;
+}
+
+/* ── Gold-foil animated fill on the hero price ── */
+.price-dollar,
+.price-int,
+.price-dec {
+    background: linear-gradient(100deg, #C08A10 0%, #F5C842 25%, #FFF1C0 45%, #FFD700 62%, #C08A10 100%);
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: goldFoil 6s linear infinite;
+}
+
+.app:not(.dark) .price-dollar,
+.app:not(.dark) .price-int,
+.app:not(.dark) .price-dec {
+    background: linear-gradient(100deg, #7A5200 0%, #B8820A 30%, #F5C842 50%, #B8820A 70%, #7A5200 100%);
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+@keyframes goldFoil {
+    0% { background-position: 0% center; }
+    100% { background-position: 220% center; }
 }
 
 .price-dec {
@@ -2947,6 +3042,17 @@ onBeforeUnmount(() => {
 .sparkline-wrap { margin-top: 10px; }
 .sparkline { width: 100%; height: 40px; display: block; }
 
+/* line strokes itself on each new data point (pathLength normalised to 1) */
+.spark-stroke {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: sparkDraw 0.9s ease-out forwards;
+}
+
+@keyframes sparkDraw {
+    to { stroke-dashoffset: 0; }
+}
+
 .sparkline-meta {
     display: flex;
     justify-content: space-between;
@@ -3126,6 +3232,35 @@ onBeforeUnmount(() => {
 .burst-r2 { width: 40px; height: 40px; border-color: rgba(245, 200, 66, 0.5); }
 .burst-ring-wrap.burst .burst-r1 { animation: burstRing 0.65s ease-out forwards; }
 .burst-ring-wrap.burst .burst-r2 { animation: burstRing2 0.55s ease-out 0.1s forwards; }
+
+/* ── Gold sparkle burst ── */
+.sparkle-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    overflow: hidden;
+}
+
+.sparkle {
+    position: absolute;
+    font-size: 15px;
+    line-height: 1;
+    color: #F5C842;
+    text-shadow: 0 0 8px rgba(245, 200, 66, 0.8);
+    transform: translate(-50%, -50%);
+    will-change: transform, opacity;
+    animation: sparkleFly 0.9s ease-out forwards;
+}
+
+@keyframes sparkleFly {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(0deg); }
+    20% { opacity: 1; }
+    100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.15) rotate(120deg);
+    }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 /* DESKTOP BREAKPOINTS                                                       */
