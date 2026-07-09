@@ -6,6 +6,17 @@ export default defineNuxtConfig({
     host: '0.0.0.0',
     port: 4000
   },
+  // ssr:false renders the app shell on the server at request time, so no static
+  // HTML is emitted for Workbox to precache — which breaks offline navigation
+  // (navigateFallback: '/' has nothing to serve). Prerendering '/' writes a
+  // static SPA shell (index.html) into .output/public so it can be precached
+  // and served offline; the client router then renders /phone, /gold, etc.
+  nitro: {
+    prerender: {
+      routes: ['/'],
+      crawlLinks: false
+    }
+  },
   devtools: { enabled: false },
   modules: [
     '@pinia/nuxt',
