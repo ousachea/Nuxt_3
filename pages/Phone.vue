@@ -10,9 +10,22 @@
  */
 
 // ---------- Types ----------
+interface UssdPlan {
+  label: string
+  code: string
+  /** Optional extra detail chips, e.g. ["100 Mins on-net", "100 SMS on-net", "7 days"] */
+  meta?: string[]
+}
+
+interface UssdPlanGroup {
+  title: string
+  items: UssdPlan[]
+}
+
 interface UssdCodes {
   checkNumber: string[]
-  checkBalance: string | null
+  checkBalance: string[]
+  planGroups: UssdPlanGroup[]
 }
 
 interface Carrier {
@@ -57,7 +70,22 @@ const CARRIERS: Carrier[] = [
     color: '#F2711C',
     colorText: '#C2570E',
     prefixes: ['11', '12', '14', '17', '61', '76', '77', '78', '85', '89', '92', '95', '99'],
-    ussd: { checkNumber: ['1#', '2#', '*3#'], checkBalance: '#124#' }
+    ussd: {
+      checkNumber: ['1#', '2#', '*3#'],
+      checkBalance: ['#124#'],
+      planGroups: [
+        {
+          title: 'Data+ Plans',
+          items: [
+            { label: '1GB for $0.25', meta: ['Validity 1 Day'], code: '*1610*25#' },
+            { label: '8GB for $1.25', meta: ['Validity 7 Days'], code: '*1610*125#' },
+            { label: '10GB for $1.50', meta: ['Validity 7 Days'], code: '*1610*150#' },
+            { label: '15GB for $1.75', meta: ['Validity 10 Days'], code: '*1610*175#' },
+            { label: '20GB for $4.00', meta: ['Validity 30 Days'], code: '*1610*400#' }
+          ]
+        }
+      ]
+    }
   },
   {
     id: 'smart',
@@ -66,7 +94,22 @@ const CARRIERS: Carrier[] = [
     color: '#16A34A',
     colorText: '#0F7C39',
     prefixes: ['10', '15', '16', '69', '70', '81', '86', '87', '93', '96', '98'],
-    ussd: { checkNumber: ['2#', '*887#', '*400#'], checkBalance: '*888#' }
+    ussd: {
+      checkNumber: ['2#', '*887#', '*400#'],
+      checkBalance: ['*888#'],
+      planGroups: [
+        {
+          title: 'Laor! Data Plan',
+          items: [
+            { label: '$1.5', code: '*1710*150*1#' },
+            { label: '20GB for $1.5', code: '*1725*150#' },
+            { label: '30GB for $2', code: '*1725*200#' },
+            { label: '90GB for $6', code: '*1725*600#' },
+            { label: '150GB for $10', code: '*1725*1000#' }
+          ]
+        }
+      ]
+    }
   },
   {
     id: 'metfone',
@@ -75,7 +118,42 @@ const CARRIERS: Carrier[] = [
     color: '#E11D2E',
     colorText: '#C81527',
     prefixes: ['31', '60', '66', '67', '68', '71', '88', '90', '97'],
-    ussd: { checkNumber: ['*99#'], checkBalance: '*097#' }
+    ussd: {
+      checkNumber: ['*99#'],
+      checkBalance: ['*097#', '*1201#'],
+      planGroups: [
+        {
+          title: '4G & 5G Data Plans',
+          items: [
+            {
+              label: '20GB for $1.5',
+              meta: ['100 Mins on-net', '100 SMS on-net', '7 days'],
+              code: '*1567*1#'
+            },
+            {
+              label: '30GB for $2',
+              meta: ['100 Mins on-net', '100 SMS on-net', '7 days'],
+              code: '*1567*2#'
+            },
+            {
+              label: '90GB for $6',
+              meta: ['300 Mins on-net', '300 SMS on-net', '30 days'],
+              code: '*1567*6#'
+            },
+            {
+              label: '150GB for $10',
+              meta: ['500 Mins on-net', '500 SMS on-net', '30 days'],
+              code: '*1567*10#'
+            },
+            {
+              label: '250GB for $15',
+              meta: ['750 Mins on-net', '750 SMS on-net', '30 days'],
+              code: '*1567*15#'
+            }
+          ]
+        }
+      ]
+    }
   },
   {
     id: 'qb',
@@ -84,7 +162,7 @@ const CARRIERS: Carrier[] = [
     color: '#7C3AED',
     colorText: '#6D28D9',
     prefixes: ['13', '80', '83', '84'],
-    ussd: { checkNumber: ['#3#', '*132#'], checkBalance: '*132#' }
+    ussd: { checkNumber: ['#3#', '*132#'], checkBalance: ['*132#'], planGroups: [] }
   },
   {
     id: 'yes',
@@ -93,7 +171,7 @@ const CARRIERS: Carrier[] = [
     color: '#0EA5E9',
     colorText: '#0B84BD',
     prefixes: ['18'],
-    ussd: { checkNumber: [], checkBalance: null }
+    ussd: { checkNumber: [], checkBalance: [], planGroups: [] }
   }
 ]
 
@@ -280,6 +358,20 @@ function selectPrefix(prefix: string) {
   document.getElementById('checker-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+function dialHref(code: string): string {
+  return `tel:${encodeURIComponent(code)}`
+}
+
+type MetaIcon = 'calls' | 'sms' | 'validity' | 'data'
+
+function metaIcon(text: string): MetaIcon {
+  const lower = text.toLowerCase()
+  if (lower.includes('min')) return 'calls'
+  if (lower.includes('sms')) return 'sms'
+  if (lower.includes('day') || lower.includes('hour')) return 'validity'
+  return 'data'
+}
+
 async function copyNumber() {
   if (!result.value.carrier) return
   try {
@@ -390,16 +482,89 @@ useSeoMeta({
               <p class="result-number">{{ result.formatted }}</p>
 
               <div
-                v-if="result.carrier.ussd.checkNumber.length || result.carrier.ussd.checkBalance"
-                class="ussd-grid"
+                v-if="
+                  result.carrier.ussd.checkNumber.length ||
+                  result.carrier.ussd.checkBalance.length ||
+                  result.carrier.ussd.planGroups.length
+                "
               >
-                <div v-if="result.carrier.ussd.checkNumber.length">
-                  <span class="ussd-label">Check your number</span>
-                  <span class="ussd-codes">{{ result.carrier.ussd.checkNumber.join(' · ') }}</span>
+                <div
+                  v-if="result.carrier.ussd.checkNumber.length || result.carrier.ussd.checkBalance.length"
+                  class="ussd-grid"
+                >
+                  <div v-if="result.carrier.ussd.checkNumber.length">
+                    <span class="ussd-label">Check your number</span>
+                    <span class="ussd-codes">{{ result.carrier.ussd.checkNumber.join(' · ') }}</span>
+                  </div>
+                  <div v-if="result.carrier.ussd.checkBalance.length">
+                    <span class="ussd-label">Check balance</span>
+                    <div class="dial-row">
+                      <a
+                        v-for="code in result.carrier.ussd.checkBalance"
+                        :key="code"
+                        :href="dialHref(code)"
+                        class="dial-btn"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path
+                            d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.4 21 3 13.6 3 4.6c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1L6.6 10.8Z"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                        {{ code }}
+                      </a>
+                    </div>
+                  </div>
                 </div>
-                <div v-if="result.carrier.ussd.checkBalance">
-                  <span class="ussd-label">Check balance</span>
-                  <span class="ussd-codes">{{ result.carrier.ussd.checkBalance }}</span>
+
+                <div
+                  v-for="group in result.carrier.ussd.planGroups"
+                  :key="group.title"
+                  class="plans-list"
+                >
+                  <span class="ussd-label">{{ group.title }}</span>
+                  <div class="plan-row">
+                    <a
+                      v-for="plan in group.items"
+                      :key="plan.code"
+                      :href="dialHref(plan.code)"
+                      class="plan-btn"
+                    >
+                      <span class="plan-text">
+                        <span class="plan-label">{{ plan.label }}</span>
+                        <span v-if="plan.meta && plan.meta.length" class="plan-meta">
+                          <span v-for="item in plan.meta" :key="item" class="plan-meta-item">
+                            <svg v-if="metaIcon(item) === 'calls'" class="plan-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.4 21 3 13.6 3 4.6c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1L6.6 10.8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                            </svg>
+                            <svg v-else-if="metaIcon(item) === 'sms'" class="plan-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9A1.5 1.5 0 0 1 18.5 16H9l-4 3.5V16H5.5A1.5 1.5 0 0 1 4 14.5v-9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+                              <path d="M7.5 8.5h9M7.5 11.5h5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                            </svg>
+                            <svg v-else-if="metaIcon(item) === 'validity'" class="plan-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <rect x="4" y="5.5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.6" />
+                              <path d="M4 9.5h16M8 3.5v4M16 3.5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                            </svg>
+                            <svg v-else class="plan-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="M4 20V12M10 20V6M16 20V15M22 20V9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                            </svg>
+                            {{ item }}
+                          </span>
+                        </span>
+                        <span class="plan-code">{{ plan.code }}</span>
+                      </span>
+                      <svg class="plan-dial-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path
+                          d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.4 21 3 13.6 3 4.6c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1L6.6 10.8Z"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </a>
+                  </div>
                 </div>
               </div>
               <p v-else class="ussd-unavailable">USSD codes for this operator aren't published yet.</p>
@@ -475,9 +640,75 @@ useSeoMeta({
               </button>
             </div>
 
-            <div v-if="carrier.ussd.checkNumber.length || carrier.ussd.checkBalance" class="carrier-ussd">
+            <div v-if="carrier.ussd.checkNumber.length || carrier.ussd.checkBalance.length" class="carrier-ussd">
               <span v-if="carrier.ussd.checkNumber.length">My number: {{ carrier.ussd.checkNumber.join(' · ') }}</span>
-              <span v-if="carrier.ussd.checkBalance">Balance: {{ carrier.ussd.checkBalance }}</span>
+              <div v-if="carrier.ussd.checkBalance.length" class="carrier-ussd-balance">
+                <span>Balance:</span>
+                <div class="dial-row">
+                  <a
+                    v-for="code in carrier.ussd.checkBalance"
+                    :key="code"
+                    :href="dialHref(code)"
+                    class="dial-btn"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.4 21 3 13.6 3 4.6c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1L6.6 10.8Z"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    {{ code }}
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-for="group in carrier.ussd.planGroups"
+              :key="group.title"
+              class="carrier-plans"
+            >
+              <span class="carrier-plans-title">{{ group.title }}</span>
+              <a
+                v-for="plan in group.items"
+                :key="plan.code"
+                :href="dialHref(plan.code)"
+                class="plan-btn"
+              >
+                <span class="plan-text">
+                  <span class="plan-label">{{ plan.label }}</span>
+                  <span v-if="plan.meta && plan.meta.length" class="plan-meta">
+                    <span v-for="item in plan.meta" :key="item" class="plan-meta-item">
+                      <svg v-if="metaIcon(item) === 'calls'" class="plan-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.4 21 3 13.6 3 4.6c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1L6.6 10.8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                      </svg>
+                      <svg v-else-if="metaIcon(item) === 'sms'" class="plan-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9A1.5 1.5 0 0 1 18.5 16H9l-4 3.5V16H5.5A1.5 1.5 0 0 1 4 14.5v-9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+                        <path d="M7.5 8.5h9M7.5 11.5h5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                      </svg>
+                      <svg v-else-if="metaIcon(item) === 'validity'" class="plan-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <rect x="4" y="5.5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.6" />
+                        <path d="M4 9.5h16M8 3.5v4M16 3.5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                      </svg>
+                      <svg v-else class="plan-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 20V12M10 20V6M16 20V15M22 20V9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      </svg>
+                      {{ item }}
+                    </span>
+                  </span>
+                  <span class="plan-code">{{ plan.code }}</span>
+                </span>
+                <svg class="plan-dial-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.4 21 3 13.6 3 4.6c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1L6.6 10.8Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </a>
             </div>
           </article>
         </div>
@@ -912,12 +1143,137 @@ button {
   color: var(--ink);
 }
 
+.dial-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dial-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--carrier-text, var(--ink));
+  background: color-mix(in srgb, var(--carrier-color, var(--ink-muted)) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--carrier-color, var(--border-strong)) 40%, var(--border));
+  border-radius: 999px;
+  padding: 5px 11px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+.dial-btn:hover {
+  border-color: var(--carrier-color, var(--ink-muted));
+  background: color-mix(in srgb, var(--carrier-color, var(--ink-muted)) 20%, var(--surface));
+}
+
+.dial-btn:active {
+  transform: scale(0.97);
+}
+
 .ussd-unavailable {
   font-size: 13px;
   color: var(--ink-muted);
   padding-top: 16px;
   border-top: 1px dashed var(--border);
   margin-top: 16px;
+}
+
+.plans-list {
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px dashed var(--border);
+}
+
+.plan-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.plan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--carrier-color, var(--border-strong)) 40%, var(--border));
+  background: color-mix(in srgb, var(--carrier-color, var(--ink-muted)) 10%, var(--surface));
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+.plan-btn:hover {
+  border-color: var(--carrier-color, var(--ink-muted));
+  background: color-mix(in srgb, var(--carrier-color, var(--ink-muted)) 18%, var(--surface));
+}
+
+.plan-btn:active {
+  transform: scale(0.98);
+}
+
+.plan-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plan-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--carrier-text, var(--ink));
+}
+
+.plan-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.plan-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+.plan-meta-icon {
+  flex-shrink: 0;
+  color: var(--ink-faint);
+}
+
+.plan-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.plan-dial-icon {
+  flex-shrink: 0;
+  color: var(--carrier-color, var(--ink-muted));
+}
+
+.carrier-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.carrier-plans-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
 }
 
 .result-card--invalid {
@@ -1099,12 +1455,19 @@ button {
 .carrier-ussd {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   font-size: 12px;
   color: var(--ink-muted);
   padding-top: 12px;
   border-top: 1px dashed var(--border);
   font-family: var(--font-mono);
+}
+
+.carrier-ussd-balance {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .directory-note {
