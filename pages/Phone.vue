@@ -456,7 +456,8 @@ useHead({
     { key: 'apple-mobile-web-app-title', name: 'apple-mobile-web-app-title', content: 'khSIM' }
   ],
   link: [
-    { key: 'apple-touch-icon', rel: 'apple-touch-icon', href: '/icons/phone-apple-touch-icon.png' }
+    { key: 'apple-touch-icon', rel: 'apple-touch-icon', href: '/icons/phone-apple-touch-icon.png' },
+    { key: 'icon', rel: 'icon', type: 'image/png', href: '/icons/phone-icon-192.png' }
   ]
 })
 </script>
