@@ -1,9 +1,0 @@
-{
-  "pid": 61075,
-  "startedAt": 1783580341452,
-  "command": "dev",
-  "cwd": "/Users/ousa/Desktop/Nuxt_3",
-  "port": 4000,
-  "hostname": "0.0.0.0",
-  "url": "http://0.0.0.0:4000"
-}
