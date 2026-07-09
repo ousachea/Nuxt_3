@@ -415,6 +415,11 @@ watch(result, (val) => {
   }
 })
 
+// ---------- Online / offline ----------
+// khSIM is fully usable offline (carrier data + lookup are bundled), so this is
+// an ambient status cue, not an error — VueUse tracks navigator.onLine for us.
+const online = useOnline()
+
 // ---------- PWA (khSIM installs as its own app, separate from Gold Tracker) ----------
 // @vite-pwa/nuxt only ships one global <link rel="manifest">, so while this page is
 // mounted we swap its href to khSIM's manifest and restore the default on unmount —
@@ -480,12 +485,24 @@ useHead({
 
     <header class="topbar">
       <span class="mark">khSIM<span class="mark-dot">.</span></span>
-      <button
-        type="button"
-        class="theme-toggle"
-        :aria-label="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
-        @click="toggleTheme"
-      >
+      <div class="topbar-actions">
+        <transition name="offline-pill">
+          <span
+            v-if="!online"
+            class="offline-pill"
+            role="status"
+            title="You're offline — khSIM works without a connection"
+          >
+            <span class="offline-dot" aria-hidden="true" />
+            Offline
+          </span>
+        </transition>
+        <button
+          type="button"
+          class="theme-toggle"
+          :aria-label="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
+          @click="toggleTheme"
+        >
         <svg v-if="theme === 'light'" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
@@ -494,7 +511,8 @@ useHead({
           <path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
         <span>{{ theme === 'light' ? 'Dark' : 'Light' }}</span>
-      </button>
+        </button>
+      </div>
     </header>
 
     <main class="hero">
@@ -978,6 +996,52 @@ button {
 
 .theme-toggle:active {
   transform: scale(0.97);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.offline-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border));
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.offline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--danger);
+  flex-shrink: 0;
+  animation: offline-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes offline-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.7); }
+}
+
+.offline-pill-enter-active,
+.offline-pill-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.offline-pill-enter-from,
+.offline-pill-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.94);
 }
 
 .hero {
