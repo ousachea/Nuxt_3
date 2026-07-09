@@ -1,0 +1,18 @@
+{
+  "name": "khSIM — Cambodia Carrier Checker",
+  "short_name": "khSIM",
+  "description": "Type or paste a Cambodian mobile number to instantly see whether it belongs to Cellcard, Smart, Metfone, qb, or Yes — plus USSD codes to check your number, balance, and data plans.",
+  "theme_color": "#1F2A44",
+  "background_color": "#EEF0F3",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "/phone",
+  "start_url": "/phone",
+  "id": "/phone",
+  "icons": [
+    { "src": "/icons/phone-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/phone-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/phone-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable any" },
+    { "src": "/icons/phone-apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

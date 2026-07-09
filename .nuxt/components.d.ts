@@ -15,6 +15,7 @@ type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {},
 
 
 export const BorderGlow: typeof import("../components/BorderGlow/BorderGlow.vue")['default']
+export const DotGrid: typeof import("../components/DotGrid/DotGrid.vue")['default']
 export const BudgetAchievementsTab: typeof import("../components/budget/AchievementsTab.vue")['default']
 export const BudgetAddExpenseModal: typeof import("../components/budget/AddExpenseModal.vue")['default']
 export const BudgetAnalyticsTab: typeof import("../components/budget/AnalyticsTab.vue")['default']
@@ -65,6 +66,7 @@ export const Html: typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core
 export const Body: typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/head/runtime/components")['Body']
 export const NuxtIsland: typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_6a373931a05b43f71e698adceb9809f4/node_modules/nuxt/dist/app/components/nuxt-island")['default']
 export const LazyBorderGlow: LazyComponent<typeof import("../components/BorderGlow/BorderGlow.vue")['default']>
+export const LazyDotGrid: LazyComponent<typeof import("../components/DotGrid/DotGrid.vue")['default']>
 export const LazyBudgetAchievementsTab: LazyComponent<typeof import("../components/budget/AchievementsTab.vue")['default']>
 export const LazyBudgetAddExpenseModal: LazyComponent<typeof import("../components/budget/AddExpenseModal.vue")['default']>
 export const LazyBudgetAnalyticsTab: LazyComponent<typeof import("../components/budget/AnalyticsTab.vue")['default']>

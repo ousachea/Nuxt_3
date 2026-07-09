@@ -72,7 +72,7 @@ const CARRIERS: Carrier[] = [
     prefixes: ['11', '12', '14', '17', '61', '76', '77', '78', '85', '89', '92', '95', '99'],
     ussd: {
       checkNumber: ['1#', '2#', '*3#'],
-      checkBalance: ['#124#'],
+      checkBalance: ['#124#', '*1201#'],
       planGroups: [
         {
           title: 'Data+ Plans',
@@ -96,12 +96,33 @@ const CARRIERS: Carrier[] = [
     prefixes: ['10', '15', '16', '69', '70', '81', '86', '87', '93', '96', '98'],
     ussd: {
       checkNumber: ['2#', '*887#', '*400#'],
-      checkBalance: ['*888#'],
+      checkBalance: ['*888#', '*1201#'],
       planGroups: [
         {
           title: 'Laor! Data Plan',
           items: [
-            { label: '$1.5', code: '*1710*150*1#' },
+            {
+              label: '15GB for $1.50',
+              meta: ['Heavy Data Users', '100 Mins on-net', '100 SMS on-net', '7 days'],
+              code: '*1710*150*1#'
+            },
+            {
+              label: '60GB for $6',
+              meta: ['Peace of Mind Users', '150 Mins on-net', '150 SMS on-net', '30 days'],
+              code: '*1710*600*1#'
+            },
+            {
+              label: '100GB for $10',
+              meta: [
+                'Peace of Mind Users',
+                '200 Mins on-net',
+                '10 Mins off-net',
+                '200 SMS on-net',
+                '30 days',
+                'Includes cybersecurity features'
+              ],
+              code: '*1710*1000*1#'
+            },
             { label: '20GB for $1.5', code: '*1725*150#' },
             { label: '30GB for $2', code: '*1725*200#' },
             { label: '90GB for $6', code: '*1725*600#' },
@@ -257,6 +278,10 @@ function toggleTheme() {
   applyTheme(theme.value === 'light' ? 'dark' : 'light')
 }
 
+// Hex values mirror --border / --accent tokens above — DotGrid needs literal hex, not CSS vars.
+const dotBaseColor = computed(() => (theme.value === 'dark' ? '#2A3043' : '#DEE1E7'))
+const dotActiveColor = computed(() => (theme.value === 'dark' ? '#8FA8FF' : '#1F2A44'))
+
 // ---------- Recent searches ----------
 const RECENTS_KEY = 'ccc:recent-searches'
 const MAX_RECENTS = 6
@@ -390,9 +415,32 @@ watch(result, (val) => {
   }
 })
 
+// ---------- PWA (khSIM installs as its own app, separate from Gold Tracker) ----------
+// @vite-pwa/nuxt only ships one global <link rel="manifest">, so while this page is
+// mounted we swap its href to khSIM's manifest and restore the default on unmount —
+// that's what lets Android/Chrome offer "Install khSIM" instead of "Install Gold Tracker".
+const KHSIM_MANIFEST = '/manifest-khsim.webmanifest'
+const DEFAULT_MANIFEST = '/manifest.webmanifest'
+
+function swapManifest(href: string) {
+  if (!import.meta.client) return
+  let link = document.head.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'manifest'
+    document.head.appendChild(link)
+  }
+  link.setAttribute('href', href)
+}
+
 onMounted(() => {
   initTheme()
   loadRecents()
+  swapManifest(KHSIM_MANIFEST)
+})
+
+onUnmounted(() => {
+  swapManifest(DEFAULT_MANIFEST)
 })
 
 // ---------- SEO ----------
@@ -401,10 +449,34 @@ useSeoMeta({
   description:
     'Paste or type a Cambodian mobile number to instantly see whether it belongs to Cellcard, Smart, Metfone, qb, or Yes — plus the USSD codes to check your own number and balance.'
 })
+
+useHead({
+  meta: [
+    { key: 'theme-color', name: 'theme-color', content: '#1F2A44' },
+    { key: 'apple-mobile-web-app-title', name: 'apple-mobile-web-app-title', content: 'khSIM' }
+  ],
+  link: [
+    { key: 'apple-touch-icon', rel: 'apple-touch-icon', href: '/icons/phone-apple-touch-icon.png' }
+  ]
+})
 </script>
 
 <template>
   <div class="page">
+    <div class="dot-bg" aria-hidden="true">
+      <DotGrid
+        :dot-size="4"
+        :gap="26"
+        :base-color="dotBaseColor"
+        :active-color="dotActiveColor"
+        :proximity="120"
+        :shock-radius="200"
+        :shock-strength="3"
+        :resistance="700"
+        :return-duration="1.2"
+      />
+    </div>
+
     <header class="topbar">
       <span class="mark">khSIM<span class="mark-dot">.</span></span>
       <button
@@ -789,8 +861,6 @@ body,
 body {
   margin: 0;
   background-color: var(--bg);
-  background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
-  background-size: 22px 22px;
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -842,11 +912,26 @@ button {
    Page shell
    ============================================================ */
 .page {
+  position: relative;
   min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 24px 20px 60px;
+}
+
+.dot-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.topbar,
+.hero,
+.footer {
+  position: relative;
+  z-index: 1;
 }
 
 .topbar {
