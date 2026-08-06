@@ -1,1 +1,0 @@
-import{ac as s,a7 as u,a5 as r,w as o,z as c,y as i}from"./C7CB3nel.js";function n(t){const e=t||r();return e?.ssrContext?.head||e?.runWithContext(()=>{if(o())return c(i)})}function d(t,e={}){const a=n(e.nuxt);if(a)return u(t,{head:a,...e})}function f(t,e={}){const a=n(e.nuxt);if(a)return s(t,{head:a,...e})}export{f as a,d as u};
