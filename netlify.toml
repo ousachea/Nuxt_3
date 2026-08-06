@@ -6,6 +6,9 @@
   NODE_VERSION = "20"
   PNPM_VERSION = "10.6.2"
   PNPM_FLAGS = "--shamefully-hoist"
+  # Netlify otherwise auto-detects Nitro's server preset and looks for a
+  # generated function. This deployment publishes static SPA files only.
+  NITRO_PRESET = "static"
 
 # Nuxt runs as a client-rendered SPA (`ssr: false`). Send direct visits and
 # browser refreshes on nested routes through the generated application shell.
@@ -13,4 +16,3 @@
   from = "/*"
   to = "/index.html"
   status = 200
-
