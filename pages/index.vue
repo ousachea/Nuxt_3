@@ -1,14 +1,14 @@
 <script setup>
 const pageFiles = import.meta.glob('~/pages/**/*.vue')
 
-const HIDDEN = ['/idol', '/js']
-
 const pageDetails = {
   '/gold': { eyebrow: 'Markets', description: 'Live prices, portfolio tracking and Khmer gold units.', tone: 'gold', symbol: 'Au' },
   '/budget': { eyebrow: 'Finance', description: 'Plan spending, build savings and see the month clearly.', tone: 'blue', symbol: '₿' },
   '/exchange': { eyebrow: 'Currency', description: 'Convert between US dollars and Cambodian riel in seconds.', tone: 'coral', symbol: '៛' },
   '/phone': { eyebrow: 'Utility', description: 'A focused mobile workspace, designed for the small screen.', tone: 'violet', symbol: '⌁' },
   '/setup': { eyebrow: 'System', description: 'Get a new workstation configured and ready to build.', tone: 'green', symbol: '⌘' },
+  '/idol': { eyebrow: 'Culture', description: 'Browse artists, profiles and the people inspiring the moment.', tone: 'pink', symbol: '★' },
+  '/js': { eyebrow: 'Code', description: 'A focused JavaScript workspace for experimenting and building.', tone: 'lime', symbol: 'JS' },
 }
 
 const pages = computed(() => Object.keys(pageFiles)
@@ -36,7 +36,7 @@ const pages = computed(() => Object.keys(pageFiles)
       }),
     }
   })
-  .filter(page => page.path !== '/' && !HIDDEN.includes(page.path.toLowerCase()))
+  .filter(page => page.path !== '/')
   .sort((a, b) => a.label.localeCompare(b.label)))
 
 const currentTime = ref('')
@@ -46,6 +46,13 @@ const updateTime = () => {
   currentTime.value = new Intl.DateTimeFormat('en', {
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   }).format(new Date())
+}
+
+const scrollToWorkspaces = () => {
+  document.getElementById('workspaces')?.scrollIntoView({
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'start',
+  })
 }
 
 onMounted(() => {
@@ -84,10 +91,20 @@ useHead({ title: 'Ousa — Personal Tools' })
 
         <div class="hero-aside">
           <p>A small collection of focused tools for money, markets and everyday work.</p>
-          <a href="#workspaces" class="explore-link">
-            Explore workspaces
+          <nav class="quick-links" aria-label="Quick open">
+            <span>Quick open</span>
+            <NuxtLink
+              v-for="page in pages"
+              :key="`quick-${page.path}`"
+              :to="page.path"
+            >
+              {{ page.label }} <span aria-hidden="true">↗</span>
+            </NuxtLink>
+          </nav>
+          <button type="button" class="explore-link" @click="scrollToWorkspaces">
+            View large cards
             <span aria-hidden="true">↓</span>
-          </a>
+          </button>
         </div>
 
         <div class="orbit" aria-hidden="true">
@@ -195,7 +212,13 @@ useHead({ title: 'Ousa — Personal Tools' })
 .hero h1 em { font-family: 'Newsreader', serif; font-weight: 300; letter-spacing: -0.055em; text-transform: none; }
 .hero-aside { padding-bottom: 8px; font-size: 12px; line-height: 1.75; }
 .hero-aside p { color: #62625a; }
-.explore-link { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; padding: 15px 0 12px; border-top: 1px solid var(--ink); text-transform: uppercase; font-size: 10px; letter-spacing: 0.1em; }
+.quick-links { display: grid; grid-template-columns: 1fr 1fr; margin-top: 24px; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.quick-links > span { grid-column: 1 / -1; padding: 8px 10px; color: #7c7c72; font-size: 8px; letter-spacing: .12em; text-transform: uppercase; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.quick-links a { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; font-size: 9px; line-height: 1.4; letter-spacing: .04em; text-transform: uppercase; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transition: color .18s ease, background .18s ease; }
+.quick-links a:hover { color: var(--paper); background: var(--ink); }
+.quick-links a span { transition: transform .18s ease; }
+.quick-links a:hover span { transform: translate(2px, -2px); }
+.explore-link { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 32px; padding: 15px 0 12px; color: inherit; background: transparent; border: 0; border-top: 1px solid var(--ink); font: inherit; text-align: left; text-transform: uppercase; font-size: 10px; letter-spacing: 0.1em; cursor: pointer; }
 .explore-link span { transition: transform 0.25s ease; }
 .explore-link:hover span { transform: translateY(4px); }
 
@@ -227,6 +250,8 @@ useHead({ title: 'Ousa — Personal Tools' })
 .tone-coral { background: #ed765f; }
 .tone-violet { background: #b7a9d8; }
 .tone-green { background: #9fbd87; }
+.tone-pink { background: #e6a5b9; }
+.tone-lime { background: #c7d86b; }
 .disabled { opacity: .55; pointer-events: none; }
 
 .home-footer { display: flex; align-items: center; gap: 20px; height: 94px; padding: 0 clamp(24px, 5vw, 76px); border-top: 1px solid var(--line); }
