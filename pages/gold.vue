@@ -106,7 +106,7 @@
                     <span class="sticky-unit">/ troy oz</span>
                 </div>
                 <div class="sticky-row-sub" v-if="displayPrice">
-                    <span class="sticky-val-sub">{{ fmt(renderedPrice / TROY * DAMLUNG) }}</span>
+                    <span class="sticky-val-sub">{{ fmt(renderedValuationPPG * DAMLUNG) }}</span>
                     <span class="sticky-unit-sub">/ damlung</span>
                 </div>
             </div>
@@ -148,8 +148,9 @@
                                         <span v-if="priceTickDir" class="tick-arrow" :class="priceTickDir">{{
         priceTickDir === 'up' ? '▲' : '▼' }}</span>
                                     </transition>
-                                    <span v-if="lastUpdated && priceSource === 'api'" class="last-updated">{{
-        lastUpdated }}</span>
+                                    <span class="market-status" :class="`is-${priceMeta.status}`">
+                                        <span class="market-status-dot" />{{ priceStatusLabel }}
+                                    </span>
                                 </div>
                             </div>
                             <transition name="price-flip" mode="out-in">
@@ -177,9 +178,52 @@
                                     <span class="khr-rate-label">KHR</span>
                                 </div>
                             </div>
+                            <div class="data-provenance" aria-live="polite">
+                                <div>
+                                    <span class="provenance-label">SOURCE</span>
+                                    <strong>{{ priceMeta.provider || 'No verified quote' }}</strong>
+                                </div>
+                                <div>
+                                    <span class="provenance-label">OBSERVED</span>
+                                    <strong>{{ priceAgeLabel }}</strong>
+                                </div>
+                                <div>
+                                    <span class="provenance-label">STANDARD</span>
+                                    <strong>1 oz t = 31.1034768 g</strong>
+                                </div>
+                            </div>
+
+                            <div class="valuation-strip">
+                                <div class="purity-control">
+                                    <span class="provenance-label">VALUATION PURITY</span>
+                                    <div class="purity-options">
+                                        <button v-for="option in [{ label: '24K', value: 1 }, { label: '22K', value: .916 }, { label: '18K', value: .75 }]"
+                                            :key="option.label" :class="{ active: selectedPurity === option.value }"
+                                            @click="selectedPurity = option.value; save()">{{ option.label }}</button>
+                                        <button :class="{ active: selectedPurity === 'custom' }"
+                                            @click="selectedPurity = 'custom'; save()">Custom</button>
+                                    </div>
+                                    <label v-if="selectedPurity === 'custom'" class="custom-purity">
+                                        <input v-model.number="customPurity" type="number" min="0" max="100" step="0.01" @change="save()" />
+                                        <span>% fine gold</span>
+                                    </label>
+                                </div>
+                                <div class="market-move" :class="marketChange.amount >= 0 ? 'gain-text' : 'loss-text'">
+                                    <span class="provenance-label">{{ chartRange }} MOVE</span>
+                                    <strong>{{ marketChange.amount >= 0 ? '+' : '' }}${{ marketChange.amount.toFixed(2) }}</strong>
+                                    <small>{{ marketChange.percent >= 0 ? '+' : '' }}{{ marketChange.percent.toFixed(2) }}%</small>
+                                </div>
+                            </div>
 
                             <!-- Sparkline -->
                             <div v-if="priceHistory.length >= 2" class="sparkline-wrap">
+                                <div class="chart-toolbar">
+                                    <span>Verified observations</span>
+                                    <div class="chart-ranges">
+                                        <button v-for="range in ['1H', '1D', '1W', '1M']" :key="range"
+                                            :class="{ active: chartRange === range }" @click="chartRange = range">{{ range }}</button>
+                                    </div>
+                                </div>
                                 <svg class="sparkline" viewBox="0 0 280 40" preserveAspectRatio="none">
                                     <defs>
                                         <linearGradient id="spark-grad" x1="0" y1="0" x2="0" y2="1">
@@ -191,17 +235,22 @@
                                     <path class="spark-stroke" :key="priceHistory.length" pathLength="1"
                                         :d="sparklinePath" fill="none" :stroke="sparklineColor" stroke-width="1.5"
                                         stroke-linecap="round" stroke-linejoin="round" />
+                                    <circle v-for="point in sparklinePoints" :key="point.time" :cx="point.x" :cy="point.y" r="1.7"
+                                        :fill="sparklineColor" class="chart-point">
+                                        <title>${{ point.price.toFixed(2) }} · {{ new Date(point.time).toLocaleString() }}</title>
+                                    </circle>
                                 </svg>
                                 <div class="sparkline-meta">
-                                    <span class="sparkline-low">${{ Math.min(...priceHistory.map(e => e.price)).toFixed(0) }}</span>
+                                    <span class="sparkline-low">Low ${{ Math.min(...chartHistory.map(e => e.price)).toFixed(0) }}</span>
                                     <span class="sparkline-label">{{ sparklineTimeRange }}</span>
-                                    <span class="sparkline-high">${{ Math.max(...priceHistory.map(e => e.price)).toFixed(0) }}</span>
+                                    <span class="sparkline-high">High ${{ Math.max(...chartHistory.map(e => e.price)).toFixed(0) }}</span>
                                 </div>
                             </div>
+                            <p class="spot-disclaimer">Spot-metal estimate only. Local dealer premiums, purity, workmanship and buy/sell spread are not included.</p>
                         </div>
 
                         <!-- Per-unit chips -->
-                        <div v-if="displayPrice" class="chips-grid" :key="displayPrice">
+                        <div v-if="displayPrice" class="chips-grid" :class="{ 'units-collapsed': !showAllUnits }" :key="displayPrice">
                             <div v-for="(u, idx) in allUnits" :key="u.key" class="chip chip-shimmer"
                                 :style="{ animationDelay: (idx * 0.08) + 's' }">
                                 <div class="shimmer-line"></div>
@@ -210,6 +259,9 @@
                                         }}</span>
                             </div>
                         </div>
+                        <button v-if="displayPrice" class="mobile-units-toggle" @click="showAllUnits = !showAllUnits">
+                            {{ showAllUnits ? 'Show essential units' : 'View all 6 units' }}
+                        </button>
 
                         <!-- Loading -->
                         <div v-if="loading" class="progress-bar">
@@ -222,7 +274,10 @@
                         </transition>
 
                         <!-- API Panel -->
-                        <div v-if="priceSource === 'api'" class="sub-panel">
+                        <details v-if="priceSource === 'api'" class="data-settings" :open="showDataSettings"
+                            @toggle="showDataSettings = $event.target.open">
+                            <summary><span>Data settings</span><small>Provider, API key &amp; refresh interval</small></summary>
+                            <div class="sub-panel">
                             <div class="sub-panel-row">
                                 <div class="api-info">
                                     <span class="api-badge">gold-api.com</span>
@@ -254,7 +309,8 @@
                                         @click="autoRefreshInterval = opt.v">{{ opt.l }}</button>
                                 </div>
                             </div>
-                        </div>
+                            </div>
+                        </details>
 
                         <!-- Custom Panel -->
                         <div v-if="priceSource === 'custom'" class="sub-panel">
@@ -327,7 +383,7 @@
                                 }}</span>
                             <span class="conv-total-val">${{ convValueUSD.toFixed(2) }}</span>
                         </div>
-                        <div v-if="displayPrice" class="unit-grid">
+                        <div v-if="displayPrice" class="unit-grid" :class="{ 'units-collapsed': !showAllUnits }">
                             <div v-for="u in allUnits" :key="u.key" class="unit-tile">
                                 <div class="tile-top">
                                     <span class="tile-name">{{ t[u.key] || u.label }}</span>
@@ -337,6 +393,9 @@
                                         }}</span>
                             </div>
                         </div>
+                        <button v-if="displayPrice" class="mobile-units-toggle" @click="showAllUnits = !showAllUnits">
+                            {{ showAllUnits ? 'Show essential units' : 'View all 6 units' }}
+                        </button>
                         <div v-else class="empty-state">
                             <svg class="empty-svg" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <circle cx="40" cy="40" r="28" stroke="currentColor" stroke-width="1.5"
@@ -356,8 +415,12 @@
                     <!-- ── PURCHASES ── -->
                     <BorderGlow class="card" id="purchases-section"
                         v-bind="goldGlow">
-                        <div class="section-header">
-                            <h2 class="section-title">{{ t.myPurchases }}</h2>
+                        <div class="section-header purchases-header">
+                            <div class="purchases-heading-copy">
+                                <span class="section-kicker">Private ledger</span>
+                                <h2 class="section-title">{{ t.myPurchases }}</h2>
+                                <p>Track acquisition cost against the selected purity-adjusted spot value.</p>
+                            </div>
                             <div class="section-actions">
                                 <select v-model="purchaseSort" class="sort-select">
                                     <option value="date-desc">Date ↓</option>
@@ -367,23 +430,39 @@
                                     <option value="weight-desc">Weight ↓</option>
                                     <option value="weight-asc">Weight ↑</option>
                                 </select>
-                                <button class="ghost-btn" @click="exportCSV" title="Export CSV">↓ Export</button>
-                                <button class="ghost-btn" @click="csvInput.click()" title="Import CSV">↑ Import</button>
+                                <button class="ledger-icon-btn" @click="exportCSV" title="Export CSV" aria-label="Export purchases">
+                                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 18v2h14v-2"/></svg>
+                                </button>
+                                <button class="ledger-icon-btn" @click="csvInput.click()" title="Import CSV" aria-label="Import purchases">
+                                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0 4 4m-4-4-4 4M5 18v2h14v-2"/></svg>
+                                </button>
                                 <input ref="csvInput" type="file" accept=".csv" hidden @change="importCSV" />
                             </div>
+                        </div>
+
+                        <div v-if="purchases.length" class="ledger-summary">
+                            <div><span>Positions</span><strong>{{ purchases.length }}</strong></div>
+                            <div><span>Invested</span><strong>{{ fmt(totalInvested) }}</strong></div>
+                            <div><span>Market value</span><strong>{{ fmt(totalCurrent) }}</strong></div>
+                            <div :class="totalGL >= 0 ? 'gain-text' : 'loss-text'"><span>Net return</span><strong>{{ totalGL >= 0 ? '+' : '' }}{{ fmt(totalGL) }}</strong></div>
                         </div>
 
                         <!-- ── PURCHASES CONTENT ── -->
                         <div>
                             <!-- FAB-style Add Button -->
                             <button class="add-purchase-btn" @click="showForm = !showForm">
-                                <span class="add-icon">{{ showForm ? '✕' : '+' }}</span>
-                                <span>{{ showForm ? t.cancel : t.addPurchase }}</span>
+                                <span class="add-icon">{{ showForm ? '×' : '+' }}</span>
+                                <span><strong>{{ showForm ? t.cancel : t.addPurchase }}</strong><small>{{ showForm ? 'Close entry form' : 'Record weight, cost and purchase date' }}</small></span>
                             </button>
 
                             <!-- Add Form -->
                             <transition name="slide-down">
                                 <div v-if="showForm" class="purchase-form">
+                                    <div class="form-intro">
+                                        <span class="form-step">NEW POSITION</span>
+                                        <strong>Record a gold purchase</strong>
+                                        <small>Values stay on this device unless exported.</small>
+                                    </div>
                                     <div class="form-grid">
                                         <div class="form-field">
                                             <label>{{ t.weight }}</label>
@@ -402,7 +481,7 @@
                                             <input v-model.number="draft.price" type="text" inputmode="decimal"
                                                 :placeholder="t.enterPrice" class="text-input" />
                                             <button v-if="goldPrice && !draft.price" type="button" class="today-chip"
-                                                @click="draft.price = parseFloat((pricePerGram * toGrams(draft.weight || 1, draft.unit)).toFixed(2))">
+                                                @click="draft.price = parseFloat((valuationPerGram * toGrams(draft.weight || 1, draft.unit)).toFixed(2))">
                                                 ✦ Use current price
                                             </button>
                                         </div>
@@ -414,14 +493,18 @@
                                                 @click="draft.date = today()">↺ Today</button>
                                         </div>
                                     </div>
-                                    <button class="primary-btn full-btn" @click="addPurchase">✦ {{ t.save }}</button>
+                                    <div v-if="draft.weight" class="entry-preview">
+                                        <span>Estimated current value · {{ Math.round(purityFactor * 10000) / 100 }}% purity</span>
+                                        <strong>{{ fmt(valuationPerGram * toGrams(draft.weight || 0, draft.unit)) }}</strong>
+                                    </div>
+                                    <button class="primary-btn full-btn ledger-save-btn" @click="addPurchase">Save to ledger</button>
                                 </div>
                             </transition>
 
                             <!-- Total weight summary -->
                             <div v-if="purchases.length" class="purchases-totals">
-                                <span>{{ purchases.length }} purchase{{ purchases.length !== 1 ? 's' : '' }}</span>
-                                <span class="purchases-total-weight">◈ {{ totalWeightChi.toFixed(2) }} Chi · {{ totalWeightGrams.toFixed(1) }}g</span>
+                                <span>Total recorded weight</span>
+                                <span class="purchases-total-weight">{{ totalWeightChi.toFixed(2) }} Chi · {{ totalWeightGrams.toFixed(1) }}g</span>
                             </div>
 
                             <!-- Purchase Cards -->
@@ -433,18 +516,13 @@
                                     :style="{ animationDelay: (i * 0.07) + 's' }"
                                     v-bind="pCardGlow(p)"
                                 >
-                                    <div class="p-card" :style="{
-                                        border: 'none',
-                                        borderLeft: gainLoss(p) >= 0 ? '3px solid var(--gain)' : '3px solid var(--loss)',
-                                        background: gainLoss(p) >= 0 ? 'var(--gain-bg)' : 'var(--loss-bg)',
-                                        borderRadius: '13px',
-                                    }">
+                                    <div class="p-card" :class="gainLoss(p) >= 0 ? 'is-gain' : 'is-loss'">
                                         <template v-if="editIdx !== p.id">
                                             <div class="pcard-header">
                                                 <div class="pcard-weight-row">
-                                                    <span class="pcard-weight">{{ p.weight }} <span class="pcard-unit">{{
-            t[p.unit] || p.unit }}</span></span>
-                                                    <span class="pcard-date">{{ formatDate(p.date) }}</span>
+                                                    <span class="position-index">POSITION {{ String(i + 1).padStart(2, '0') }}</span>
+                                                    <span class="pcard-weight">{{ p.weight }} <span class="pcard-unit">{{ t[p.unit] || p.unit }}</span></span>
+                                                    <span class="pcard-date">Bought {{ formatDate(p.date) }} · {{ fmt(purchaseCostPerGram(p)) }}/g cost</span>
                                                 </div>
                                                 <div class="pcard-btns">
                                                     <button class="pcard-btn" @click="startEdit(p)"
@@ -472,6 +550,7 @@
                                                         :class="gainLoss(p) >= 0 ? 'gain-text' : 'loss-text'">
                                                         {{ (gainLoss(p) >= 0 ? '+' : '') + fmt(Math.abs(gainLoss(p))) }}
                                                     </span>
+                                                    <span class="return-pct">{{ purchaseReturnPct(p) >= 0 ? '+' : '' }}{{ purchaseReturnPct(p).toFixed(2) }}%</span>
                                                 </div>
                                             </div>
                                         </template>
@@ -509,17 +588,14 @@
                             </div>
 
                             <div v-else-if="!showForm" class="empty-state">
-                                <svg class="empty-svg" viewBox="0 0 80 80" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="20" y="38" width="40" height="24" rx="3" stroke="currentColor"
-                                        stroke-width="1.5" opacity="0.5" />
-                                    <path d="M28 38V32a12 12 0 0 1 24 0v6" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" opacity="0.5" />
-                                    <circle cx="40" cy="50" r="4" fill="currentColor" opacity="0.4" />
-                                    <line x1="40" y1="54" x2="40" y2="58" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" opacity="0.4" />
+                                <svg class="empty-svg ledger-empty-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="13" y="17" width="54" height="46" rx="2" stroke="currentColor"/>
+                                    <path d="M23 29h34M23 39h20M23 49h28" stroke="currentColor" stroke-linecap="round"/>
+                                    <path d="M58 48v13M51.5 54.5h13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                 </svg>
-                                <p>{{ t.noPurchases }}</p>
+                                <strong>Your private gold ledger is empty</strong>
+                                <p>Add a purchase to compare its acquisition cost with today’s purity-adjusted spot estimate.</p>
+                                <button class="primary-btn empty-add-btn" @click="showForm = true">Record first purchase</button>
                             </div>
                         </div>
                     </BorderGlow>
@@ -592,13 +668,13 @@
                             <div class="qref-section-label">Chi</div>
                             <div v-for="qty in [1, 2, 5, 10]" :key="qty" class="qref-row">
                                 <span class="qref-label">{{ qty }} Chi</span>
-                                <span class="qref-val">{{ fmt(renderedPPG * CHI * qty) }}</span>
+                                <span class="qref-val">{{ fmt(renderedValuationPPG * CHI * qty) }}</span>
                             </div>
                             <div class="qref-divider" />
                             <div class="qref-section-label">Damlung</div>
                             <div v-for="qty in [1, 2, 5]" :key="'d'+qty" class="qref-row">
                                 <span class="qref-label">{{ qty }} Damlung</span>
-                                <span class="qref-val">{{ fmt(renderedPPG * DAMLUNG * qty) }}</span>
+                                <span class="qref-val">{{ fmt(renderedValuationPPG * DAMLUNG * qty) }}</span>
                             </div>
                             <template v-if="qrefHoldingsRows.length">
                                 <div class="qref-divider" />
@@ -624,15 +700,15 @@
         <!-- Mobile Bottom Nav -->
         <nav class="mobile-nav" aria-label="Main navigation">
             <button class="mnav-btn" :class="{ active: mobileTab === 'price' }" @click="navTo('price')">
-                <span class="mnav-icon">🥇</span>
+                <svg class="mnav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8.5 14.5h7M9.5 10.5h5M12 7.5v9"/></svg>
                 <span class="mnav-label">Price</span>
             </button>
             <button class="mnav-btn" :class="{ active: mobileTab === 'purchases' }" @click="navTo('purchases')">
-                <span class="mnav-icon">📋</span>
+                <svg class="mnav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="6" y="5" width="12" height="15" rx="2"/><path d="M9 5V3.5h6V5M9 10h6M9 14h6"/></svg>
                 <span class="mnav-label">Purchases</span>
             </button>
             <button class="mnav-btn" :class="{ active: mobileTab === 'portfolio' }" @click="navTo('portfolio')">
-                <span class="mnav-icon">📊</span>
+                <svg class="mnav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19V9M12 19V5M19 19v-7M3 19h18"/></svg>
                 <span class="mnav-label">Portfolio</span>
             </button>
         </nav>
@@ -651,7 +727,8 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 const { $goldDb } = useNuxtApp()
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const TROY = 31.1035
+// NIST precious-metals conversion factor: one troy ounce in grams.
+const TROY = 31.1034768
 const DAMLUNG = 37.5
 const CHI = 3.75
 const HUN = 0.375
@@ -696,6 +773,7 @@ const customPrice = ref(null)
 const customApiUrl = ref('')
 const goldPrice = ref(null)
 const lastUpdated = ref('')
+const priceMeta = ref({ status: 'unavailable', provider: '', fetchedAt: null })
 const loading = ref(false)
 const flashMsg = ref('')
 const flashType = ref('success')
@@ -708,6 +786,11 @@ const draft = ref({ weight: '', unit: 'chi', price: '', date: today() })
 const editIdx = ref(null)
 const editDraft = ref({})
 const csvInput = ref(null)
+const showAllUnits = ref(false)
+const showDataSettings = ref(false)
+const selectedPurity = ref(1)
+const customPurity = ref(99.99)
+const chartRange = ref('1H')
 
 // ─── Micro-animations ───────────────────────────────────────────────────────
 const gemSpin = ref(false)
@@ -774,7 +857,6 @@ const mobileTab = ref('price')
 // ─── Animation State ──────────────────────────────────────────────────────────
 const animatedPrice = ref(null)
 const priceTickDir = ref(null)
-let priceSimTimer = null
 let rafId = null
 
 function animateCounterTo(target, duration = 900) {
@@ -798,30 +880,6 @@ function animateCounterTo(target, duration = 900) {
     })
 }
 
-// ─── Price Simulation ─────────────────────────────────────────────────────────
-let simRunning = false
-
-function startPriceSim() {
-    stopPriceSim()
-    simRunning = true
-    async function tick() {
-        if (!simRunning || !goldPrice.value || loading.value || priceSource.value !== 'api') return
-        const delta = (Math.random() * 5) * (Math.random() < 0.5 ? 1 : -1)
-        const display = goldPrice.value + delta
-        priceTickDir.value = delta > 0 ? 'up' : 'down'
-        if (typeof navigator.vibrate === 'function') navigator.vibrate(12)
-        await animateCounterTo(display, 800)
-        setTimeout(() => { priceTickDir.value = null }, 200)
-        if (simRunning) priceSimTimer = setTimeout(tick, 3000 + Math.random() * 3000)
-    }
-    priceSimTimer = setTimeout(tick, 4000)
-}
-
-function stopPriceSim() {
-    simRunning = false
-    if (priceSimTimer) { clearTimeout(priceSimTimer); priceSimTimer = null }
-}
-
 // ─── Auto-refresh ─────────────────────────────────────────────────────────────
 function startAutoRefresh() {
     if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null }
@@ -837,7 +895,7 @@ function stopAutoRefresh() {
 
 // ─── Price History (sparkline) ────────────────────────────────────────────────
 const priceHistory = ref([])
-const MAX_HISTORY = 20
+const MAX_HISTORY = 500
 
 function pushHistory(price) {
     const entry = { price, time: Date.now() }
@@ -852,8 +910,15 @@ function loadHistory() {
     } catch { }
 }
 
+const chartRangeMs = { '1H': 3600000, '1D': 86400000, '1W': 604800000, '1M': 2592000000 }
+const chartHistory = computed(() => {
+    const cutoff = Date.now() - chartRangeMs[chartRange.value]
+    const filtered = priceHistory.value.filter(entry => entry.time >= cutoff)
+    return filtered.length >= 2 ? filtered : priceHistory.value.slice(-20)
+})
+
 const sparklinePath = computed(() => {
-    const h = priceHistory.value
+    const h = chartHistory.value
     if (h.length < 2) return ''
     const prices = h.map(e => e.price)
     const W = 280, H = 40, pad = 4
@@ -868,19 +933,38 @@ const sparklinePath = computed(() => {
 })
 
 const sparklineColor = computed(() => {
-    const h = priceHistory.value
+    const h = chartHistory.value
     if (h.length < 2) return '#F5C842'
     return h[h.length - 1].price >= h[0].price ? '#22C55E' : '#F87171'
 })
 
 const sparklineTimeRange = computed(() => {
-    const h = priceHistory.value
+    const h = chartHistory.value
     if (h.length < 2) return `${h.length} pt`
     const diffMs = Date.now() - h[0].time
     const mins = Math.round(diffMs / 60000)
     if (mins < 1) return 'just now'
     if (mins < 60) return `${mins}m range`
     return `${(diffMs / 3600000).toFixed(1)}h range`
+})
+
+const sparklinePoints = computed(() => {
+    const h = chartHistory.value
+    if (h.length < 2) return []
+    const prices = h.map(e => e.price)
+    const min = Math.min(...prices), max = Math.max(...prices), range = max - min || 1
+    return h.map((entry, index) => ({
+        x: 4 + (index / (h.length - 1)) * 272,
+        y: 36 - ((entry.price - min) / range) * 32,
+        ...entry,
+    }))
+})
+
+const marketChange = computed(() => {
+    const h = chartHistory.value
+    if (h.length < 2) return { amount: 0, percent: 0 }
+    const amount = h.at(-1).price - h[0].price
+    return { amount, percent: h[0].price ? amount / h[0].price * 100 : 0 }
 })
 
 // ─── Password State ───────────────────────────────────────────────────────────
@@ -1031,6 +1115,22 @@ const translations = {
 }
 const t = computed(() => translations[lang.value])
 
+const priceStatusLabel = computed(() => ({
+    live: 'Verified live quote',
+    cached: 'Cached quote',
+    custom: 'Manual price',
+    unavailable: 'Quote unavailable',
+}[priceMeta.value.status]))
+
+const priceAgeLabel = computed(() => {
+    if (!priceMeta.value.fetchedAt) return '—'
+    const timestamp = new Date(priceMeta.value.fetchedAt)
+    if (Number.isNaN(timestamp.getTime())) return '—'
+    const ageMinutes = Math.max(0, Math.floor((Date.now() - timestamp.getTime()) / 60000))
+    const age = ageMinutes < 1 ? 'just now' : ageMinutes < 60 ? `${ageMinutes}m ago` : `${Math.floor(ageMinutes / 60)}h ago`
+    return `${timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${age}`
+})
+
 // ─── Shared BorderGlow presets ──────────────────────────────────────────────
 const goldGlow = computed(() => ({
     colors: ['#F5C842', '#C08A10', '#FFD700'],
@@ -1059,21 +1159,26 @@ function pCardGlow(p) {
 
 // ─── Price computations ───────────────────────────────────────────────────────
 const pricePerGram = computed(() => displayPrice.value ? displayPrice.value / TROY : 0)
+const purityFactor = computed(() => selectedPurity.value === 'custom'
+    ? Math.min(100, Math.max(0, Number(customPurity.value) || 0)) / 100
+    : Number(selectedPurity.value))
+const valuationPerGram = computed(() => pricePerGram.value * purityFactor.value)
+const renderedValuationPPG = computed(() => renderedPPG.value * purityFactor.value)
 
 const displayPrice = computed(() => animatedPrice.value ?? goldPrice.value)
 const allUnits = computed(() => [
-    { key: 'li', label: 'Li', price: renderedPPG.value * LI, gram: '0.0375g' },
-    { key: 'hun', label: 'Hun', price: renderedPPG.value * HUN, gram: '0.375g' },
-    { key: 'chi', label: 'Chi', price: renderedPPG.value * CHI, gram: '3.75g' },
-    { key: 'gram', label: 'Gram', price: renderedPPG.value, gram: '1g' },
-    { key: 'damlung', label: 'Damlung', price: renderedPPG.value * DAMLUNG, gram: '37.5g' },
-    { key: 'troyOz', label: 'Troy Oz', price: renderedPrice.value || 0, gram: '31.1g' },
+    { key: 'chi', label: 'Chi', price: renderedValuationPPG.value * CHI, gram: '3.75g' },
+    { key: 'damlung', label: 'Damlung', price: renderedValuationPPG.value * DAMLUNG, gram: '37.5g' },
+    { key: 'gram', label: 'Gram', price: renderedValuationPPG.value, gram: '1g' },
+    { key: 'li', label: 'Li', price: renderedValuationPPG.value * LI, gram: '0.0375g' },
+    { key: 'hun', label: 'Hun', price: renderedValuationPPG.value * HUN, gram: '0.375g' },
+    { key: 'troyOz', label: 'Troy Oz', price: (renderedPrice.value || 0) * purityFactor.value, gram: '31.1035g' },
 ])
 
 const convValueUSD = computed(() => {
     if (!displayPrice.value || !convInput.value) return 0
     const grams = toGrams(convInput.value, activeConv.value)
-    return pricePerGram.value * grams
+    return valuationPerGram.value * grams
 })
 
 const totalInvested = computed(() => purchases.value.reduce((s, p) => s + p.price, 0))
@@ -1100,7 +1205,7 @@ const qrefHoldingsRows = computed(() => {
         const key = `${p.weight}-${p.unit}`
         if (!seen.has(key)) {
             seen.add(key)
-            acc.push({ key, weight: p.weight, unit: p.unit, value: renderedPPG.value * toGrams(p.weight, p.unit) })
+            acc.push({ key, weight: p.weight, unit: p.unit, value: renderedValuationPPG.value * toGrams(p.weight, p.unit) })
         }
         return acc
     }, []).slice(0, 5)
@@ -1114,8 +1219,13 @@ function toggleDark() { isDark.value = !isDark.value; save() }
 function toGrams(w, u) { return w * (UNIT_GRAMS[u] || 1) }
 function fromGrams(g, u) { return g / (UNIT_GRAMS[u] || 1) }
 function convertUnit(val, from, to) { return fromGrams(toGrams(val, from), to).toFixed(4) }
-function currentValue(p) { return displayPrice.value ? pricePerGram.value * toGrams(p.weight, p.unit) : 0 }
+function currentValue(p) { return displayPrice.value ? valuationPerGram.value * toGrams(p.weight, p.unit) : 0 }
 function gainLoss(p) { return currentValue(p) - p.price }
+function purchaseReturnPct(p) { return p.price ? gainLoss(p) / p.price * 100 : 0 }
+function purchaseCostPerGram(p) {
+    const grams = toGrams(p.weight, p.unit)
+    return grams ? p.price / grams : 0
+}
 function formatDate(d) { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) }
 
 function fmt(n, dec = 2) {
@@ -1139,7 +1249,9 @@ function applyCustomPrice() {
     if (priceMethod.value === 'troyOz') goldPrice.value = p
     else if (priceMethod.value === 'damlung') goldPrice.value = (p / DAMLUNG) * TROY
     else if (priceMethod.value === 'chi') goldPrice.value = (p / CHI) * TROY
-    lastUpdated.value = new Date().toLocaleTimeString() + ' (custom)'
+    const now = new Date()
+    lastUpdated.value = now.toLocaleTimeString()
+    priceMeta.value = { status: 'custom', provider: 'Manual entry', fetchedAt: now.toISOString() }
     animateCounterTo(goldPrice.value)
     save()
 }
@@ -1250,12 +1362,30 @@ async function saveGoldPrice(price) {
 async function fetchPrice() {
     loading.value = true
     let ok = false
+    let provider = ''
+    let observedAt = null
+    let nextPrice = null
     try {
-        const r = await fetch('https://api.gold-api.com/price/XAU', { mode: 'cors' })
+        const r = await fetch('https://api.gold-api.com/price/XAU', {
+            mode: 'cors',
+            cache: 'no-store',
+            signal: AbortSignal.timeout(8000),
+        })
         if (r.ok) {
             const d = await r.json()
             const p = d?.price ?? d?.ask ?? d?.bid
-            if (p && !isNaN(p)) { goldPrice.value = parseFloat(p); ok = true }
+            const parsed = Number(p)
+            if (Number.isFinite(parsed) && parsed >= 100 && parsed <= 20000) {
+                nextPrice = parsed
+                provider = 'gold-api.com · XAU/USD spot'
+                const apiTime = d?.updatedAt ?? d?.timestamp ?? d?.updated_at
+                if (apiTime) {
+                    const normalized = typeof apiTime === 'number' && apiTime < 1e12 ? apiTime * 1000 : apiTime
+                    const candidate = new Date(normalized)
+                    if (!Number.isNaN(candidate.getTime())) observedAt = candidate
+                }
+                ok = true
+            }
         }
     } catch (_) { }
 
@@ -1267,26 +1397,48 @@ async function fetchPrice() {
             })
             if (r.ok) {
                 const d = await r.json()
-                if (d?.price) { goldPrice.value = parseFloat(d.price); ok = true }
+                const parsed = Number(d?.price)
+                if (Number.isFinite(parsed) && parsed >= 100 && parsed <= 20000) {
+                    nextPrice = parsed
+                    provider = 'goldapi.io · XAU/USD spot'
+                    const candidate = d?.timestamp ? new Date(Number(d.timestamp) * 1000) : null
+                    if (candidate && !Number.isNaN(candidate.getTime())) observedAt = candidate
+                    ok = true
+                }
             }
         } catch (_) { }
     }
 
     if (ok) {
-        lastUpdated.value = new Date().toLocaleTimeString()
+        const previousPrice = goldPrice.value
+        goldPrice.value = nextPrice
+        const verifiedAt = observedAt || new Date()
+        lastUpdated.value = verifiedAt.toLocaleTimeString()
+        priceMeta.value = { status: 'live', provider, fetchedAt: verifiedAt.toISOString() }
+        if (previousPrice && previousPrice !== nextPrice) {
+            priceTickDir.value = nextPrice > previousPrice ? 'up' : 'down'
+            setTimeout(() => { priceTickDir.value = null }, 900)
+        }
         pushHistory(goldPrice.value)
         animateCounterTo(goldPrice.value)
         save(); flash(t.value.pricesUpdated)
         spinGem()
-        startPriceSim()
         saveGoldPrice(goldPrice.value)
     } else {
-        const cached = load()?.goldPrice
+        const cachedState = load()
+        const cached = cachedState?.goldPrice
         if (cached) {
             goldPrice.value = cached
-            lastUpdated.value = (load()?.lastUpdated || '') + ' (cached)'
+            lastUpdated.value = cachedState?.lastUpdated || ''
+            priceMeta.value = {
+                status: 'cached',
+                provider: cachedState?.priceMeta?.provider || 'Saved on this device',
+                fetchedAt: cachedState?.priceMeta?.fetchedAt || null,
+            }
+            animateCounterTo(goldPrice.value)
             flash('Using cached price — live fetch failed', 'error')
         } else {
+            priceMeta.value = { status: 'unavailable', provider: '', fetchedAt: null }
             flash('Could not fetch price. Try Custom mode.', 'error')
         }
     }
@@ -1446,11 +1598,13 @@ function save() {
         localStorage.setItem('gt4', JSON.stringify({
             lang: lang.value, isDark: isDark.value, goldPrice: goldPrice.value,
             lastUpdated: lastUpdated.value, priceMethod: priceMethod.value,
+            priceMeta: priceMeta.value,
             customPrice: customPrice.value, customApiUrl: customApiUrl.value,
             priceSource: priceSource.value,
             autoRefreshInterval: autoRefreshInterval.value,
             purchaseSort: purchaseSort.value,
             showKHR: showKHR.value, khrRate: khrRate.value,
+            selectedPurity: selectedPurity.value, customPurity: customPurity.value,
         }))
         if (isOwner.value) {
             const extra = purchases.value.filter(p => !PRE_PURCHASES.find(pp => pp.id === p.id))
@@ -1472,6 +1626,9 @@ onMounted(() => {
     if (d) {
         lang.value = d.lang || 'en'; isDark.value = d.isDark ?? true
         goldPrice.value = d.goldPrice || null; lastUpdated.value = d.lastUpdated || ''
+        priceMeta.value = d.priceMeta || (d.goldPrice
+            ? { status: 'cached', provider: 'Saved on this device', fetchedAt: null }
+            : { status: 'unavailable', provider: '', fetchedAt: null })
         priceMethod.value = d.priceMethod || 'troyOz'
         customPrice.value = d.customPrice || null; customApiUrl.value = d.customApiUrl || ''
         priceSource.value = d.priceSource || 'api'
@@ -1479,6 +1636,8 @@ onMounted(() => {
         purchaseSort.value = d.purchaseSort || 'date-desc'
         showKHR.value = d.showKHR ?? false
         khrRate.value = d.khrRate || 4100
+        selectedPurity.value = d.selectedPurity ?? 1
+        customPurity.value = d.customPurity ?? 99.99
     }
     // Load user's own purchases (non-owner) on start
     try {
@@ -1498,7 +1657,6 @@ onBeforeUnmount(() => {
     window.removeEventListener('online', handleOnline)
     window.removeEventListener('offline', handleOffline)
     window.removeEventListener('scroll', handleScroll)
-    stopPriceSim()
     stopAutoRefresh()
     stopIdleWatch()
     stopSSClock()
@@ -1508,6 +1666,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,600;6..96,700&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap');
+
 *,
 *::before,
 *::after {
@@ -3262,6 +3422,152 @@ onBeforeUnmount(() => {
     }
 }
 
+/* ── 2026 bullion desk redesign ─────────────────────────────────────────── */
+.app {
+    --gold: #dcb85d;
+    --gold-dim: #9d7b2f;
+    --radius-sm: 5px;
+    --radius: 8px;
+    --radius-lg: 10px;
+    --font: 'Manrope', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    background-image:
+        linear-gradient(rgba(220, 184, 93, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(220, 184, 93, .025) 1px, transparent 1px);
+    background-size: 32px 32px;
+}
+
+.app.dark {
+    --bg: #0b0b09;
+    --surface: #12120f;
+    --surface2: #181813;
+    --surface3: #22221b;
+    --border: rgba(231, 219, 185, .11);
+    --border-hi: rgba(231, 219, 185, .22);
+    --text: #eee9dc;
+    --text-2: #9d998d;
+    --text-3: #656258;
+}
+
+.app:not(.dark) {
+    --bg: #e9e3d5;
+    --surface: #f5f1e7;
+    --surface2: #e9e3d5;
+    --surface3: #dcd3bf;
+    --text: #17160f;
+    --text-2: #696457;
+    --text-3: #918a7a;
+}
+
+.ambient { opacity: .3; }
+.orb { filter: blur(150px); }
+
+.header {
+    background: rgba(11, 11, 9, .93);
+    border-bottom-color: rgba(220, 184, 93, .25);
+}
+.app:not(.dark) .header { background: rgba(233, 227, 213, .94); }
+.header-inner { padding-block: 14px; }
+.logo-gem { border-radius: 2px; transform: rotate(45deg); }
+.logo-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 19px;
+    letter-spacing: -.02em;
+}
+.logo-sub { font-family: var(--mono); letter-spacing: .12em; text-transform: uppercase; font-size: 8px; }
+.ctrl-btn { border-radius: 4px; background: transparent; }
+
+.main { padding-top: 24px; }
+.desktop-grid { gap: 14px; }
+.col-left, .col-center, .col-right { gap: 14px; }
+.card {
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, .16);
+}
+.price-hero {
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 105% -10%, rgba(220, 184, 93, .17), transparent 42%),
+        var(--surface);
+}
+.price-hero::before {
+    content: 'XAU';
+    position: absolute;
+    right: -8px;
+    top: 54px;
+    font-family: 'Bodoni Moda', serif;
+    font-size: 116px;
+    line-height: 1;
+    color: var(--gold);
+    opacity: .035;
+    pointer-events: none;
+}
+.seg-ctrl { width: max-content; border-radius: 4px; padding: 2px; margin-bottom: 28px; }
+.seg-btn { flex: none; min-width: 112px; border-radius: 3px; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.seg-btn.active { background: var(--gold); border-color: var(--gold); color: #17140b; }
+.metal-tag { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.hero-price { margin-block: 12px 0; }
+.price-dollar { font-family: 'Bodoni Moda', serif; font-weight: 600; }
+.price-int {
+    font-family: 'Bodoni Moda', serif;
+    font-weight: 700;
+    font-size: clamp(58px, 6vw, 92px);
+    letter-spacing: -.065em;
+}
+.price-dec { font-family: 'Bodoni Moda', serif; }
+.price-unit-meta { margin-top: -3px; }
+.price-unit-label { font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+
+.market-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 8px;
+    border: 1px solid var(--border-hi);
+    border-radius: 999px;
+    color: var(--text-2);
+    font: 500 9px/1 var(--mono);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+.market-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.market-status.is-live { color: #71c98b; }
+.market-status.is-cached { color: #e4a65d; }
+.market-status.is-custom { color: #91a9d8; }
+.market-status.is-unavailable { color: #c8796d; }
+
+.data-provenance {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1.35fr;
+    gap: 1px;
+    margin: 22px 0 18px;
+    border: 1px solid var(--border);
+    background: var(--border);
+}
+.data-provenance > div { min-width: 0; padding: 10px 12px; background: var(--surface2); }
+.provenance-label { display: block; margin-bottom: 5px; color: var(--text-3); font: 500 8px/1 var(--mono); letter-spacing: .13em; }
+.data-provenance strong { display: block; overflow: hidden; color: var(--text-2); font: 500 9px/1.35 var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+
+.chips-grid { gap: 1px; padding: 1px; background: var(--border); border: 0; }
+.chip { border: 0; border-radius: 0; background: var(--surface2); }
+.chip-label, .tile-name { font-family: var(--mono); letter-spacing: .1em; }
+.chip-price, .tile-price { font-family: 'Bodoni Moda', serif; }
+.sub-panel { border-radius: 5px; border-style: solid; }
+.primary-btn { border-radius: 4px; color: #17140b; }
+.text-input, .method-btn, .conv-tab, .from-badge { border-radius: 4px; }
+.section-title { font-family: 'Bodoni Moda', serif; font-size: 20px; letter-spacing: -.02em; }
+.unit-tile { border-radius: 4px; }
+
+@media (max-width: 520px) {
+    .card { padding: 18px 16px; }
+    .price-int { font-size: clamp(55px, 17vw, 76px); }
+    .data-provenance { grid-template-columns: 1fr 1fr; }
+    .data-provenance > div:last-child { grid-column: 1 / -1; }
+    .seg-ctrl { width: 100%; }
+    .seg-btn { flex: 1; min-width: 0; }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════ */
 /* DESKTOP BREAKPOINTS                                                       */
 /* ══════════════════════════════════════════════════════════════════════════ */
@@ -3550,5 +3856,159 @@ onBeforeUnmount(() => {
 @media (max-width: 767px) {
     .mobile-nav { display: flex; }
     .main { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
+}
+
+/* Keep the bullion desk geometry authoritative over legacy wide-screen rules. */
+.card { border-radius: 10px; }
+.section-title { font-family: 'Bodoni Moda', serif; font-size: 20px; }
+.price-int { font-family: 'Bodoni Moda', serif; font-size: clamp(58px, 6vw, 92px); letter-spacing: -.065em; }
+.mobile-nav { background: rgba(11, 11, 9, .96); }
+.app:not(.dark) .mobile-nav { background: rgba(233, 227, 213, .96); }
+
+@media (min-width: 1600px) {
+    .card { border-radius: 10px; }
+    .price-int { font-size: 86px; letter-spacing: -.065em; }
+    .section-title { font-size: 21px; }
+}
+
+/* ── Market context, purity and progressive disclosure ─────────────────── */
+.valuation-strip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+    margin: 18px 0 8px;
+}
+.purity-options { display: flex; gap: 4px; flex-wrap: wrap; }
+.purity-options button,
+.chart-ranges button {
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text-2);
+    background: var(--surface2);
+    font: 500 9px/1 var(--mono);
+    letter-spacing: .07em;
+    cursor: pointer;
+}
+.purity-options button.active,
+.chart-ranges button.active { color: #15130b; background: var(--gold); border-color: var(--gold); }
+.custom-purity { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--text-2); font: 10px var(--mono); }
+.custom-purity input { width: 76px; padding: 6px 8px; border: 1px solid var(--gold-border); border-radius: 3px; color: var(--text); background: var(--surface2); font: 11px var(--mono); }
+.market-move { min-width: 112px; padding: 10px 12px; border-left: 1px solid var(--border-hi); }
+.market-move strong { display: block; font: 600 18px/1.2 'Bodoni Moda', serif; }
+.market-move small { font: 9px var(--mono); opacity: .8; }
+.chart-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 9px; color: var(--text-3); font: 8px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.chart-ranges { display: flex; gap: 3px; }
+.chart-ranges button { min-height: 25px; padding: 0 7px; }
+.chart-point { opacity: 0; transition: opacity .2s, r .2s; }
+.sparkline:hover .chart-point { opacity: .85; }
+.spot-disclaimer { margin-top: 14px; padding-left: 10px; border-left: 2px solid var(--gold-dim); color: var(--text-3); font: 9px/1.6 var(--mono); }
+
+.data-settings { margin-top: 14px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+.data-settings summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; cursor: pointer; list-style: none; color: var(--text-2); font: 500 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.data-settings summary::-webkit-details-marker { display: none; }
+.data-settings summary::after { content: '+'; margin-left: auto; color: var(--gold); font-size: 16px; }
+.data-settings[open] summary::after { content: '−'; }
+.data-settings summary small { color: var(--text-3); font-size: 8px; letter-spacing: 0; text-transform: none; }
+.data-settings .sub-panel { margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+
+.mobile-units-toggle { display: none; width: 100%; margin-top: 8px; padding: 9px; border: 1px dashed var(--border-hi); border-radius: 4px; color: var(--gold); background: transparent; font: 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.mnav-icon { width: 22px; height: 22px; stroke: var(--text-3); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke .15s, transform .15s; }
+.mnav-btn.active .mnav-icon { stroke: var(--gold); transform: translateY(-2px); filter: drop-shadow(0 0 4px rgba(220,184,93,.35)); }
+
+@media (min-width: 1100px) {
+    .desktop-grid { display: grid; grid-template-columns: minmax(340px, 5fr) minmax(520px, 7fr); align-items: start; gap: 18px; }
+    .col-left { grid-column: 1; position: static; }
+    .col-center { grid-column: 2; }
+    .col-right { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); position: static; gap: 18px; }
+    .col-right > * { min-width: 0; }
+}
+
+@media (max-width: 767px) {
+    .chips-grid.units-collapsed .chip:nth-child(n + 4),
+    .unit-grid.units-collapsed .unit-tile:nth-child(n + 4) { display: none; }
+    .mobile-units-toggle { display: block; }
+    .valuation-strip { grid-template-columns: 1fr; }
+    .market-move { border-left: 0; border-top: 1px solid var(--border); padding-left: 0; }
+    .data-settings summary small { display: none; }
+    .chart-toolbar { align-items: flex-start; flex-direction: column; }
+    .chart-ranges { width: 100%; }
+    .chart-ranges button { flex: 1; }
+}
+
+/* ── Private purchases ledger redesign ─────────────────────────────────── */
+#purchases-section { overflow: hidden; }
+.purchases-header { align-items: flex-start; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.purchases-heading-copy { max-width: 430px; }
+.purchases-heading-copy .section-title { margin: 3px 0 4px; }
+.purchases-heading-copy p { color: var(--text-3); font: 9px/1.55 var(--mono); }
+.section-kicker, .form-step, .position-index { color: var(--gold-dim); font: 500 8px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.section-actions { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.ledger-icon-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-2); background: var(--surface2); cursor: pointer; }
+.ledger-icon-btn:hover { color: var(--gold); border-color: var(--gold-border); }
+.ledger-icon-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+.ledger-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 18px 0 12px; border: 1px solid var(--border); background: var(--border); }
+.ledger-summary > div { min-width: 0; padding: 12px; background: var(--surface2); }
+.ledger-summary span { display: block; margin-bottom: 6px; color: var(--text-3); font: 8px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.ledger-summary strong { display: block; overflow: hidden; color: var(--text); font: 600 15px 'Bodoni Moda', serif; white-space: nowrap; text-overflow: ellipsis; }
+
+.add-purchase-btn { justify-content: flex-start; gap: 14px; padding: 13px 15px; border-width: 1px; border-style: solid; border-radius: 4px; text-align: left; }
+.add-purchase-btn .add-icon { display: grid; place-items: center; width: 31px; height: 31px; flex: 0 0 31px; border-radius: 50%; color: #15130b; background: var(--gold); font: 400 20px/1 var(--mono); }
+.add-purchase-btn > span:last-child { display: flex; flex-direction: column; gap: 2px; }
+.add-purchase-btn strong { color: var(--text); font: 600 11px var(--font); }
+.add-purchase-btn small { color: var(--text-3); font: 8px var(--mono); }
+
+.purchase-form { padding: 18px; border-radius: 4px; background: var(--surface2); }
+.form-intro { display: grid; gap: 4px; margin-bottom: 16px; padding-bottom: 13px; border-bottom: 1px solid var(--border); }
+.form-intro strong { font: 600 18px 'Bodoni Moda', serif; }
+.form-intro small { color: var(--text-3); font: 8px var(--mono); }
+.form-field label { font-family: var(--mono); font-size: 8px; }
+.entry-preview { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 2px 0 12px; padding: 10px 12px; border: 1px solid var(--gold-border); background: rgba(220,184,93,.06); }
+.entry-preview span { color: var(--text-3); font: 8px/1.4 var(--mono); }
+.entry-preview strong { color: var(--gold); font: 600 18px 'Bodoni Moda', serif; white-space: nowrap; }
+.ledger-save-btn { min-height: 44px; border-radius: 3px; font: 600 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+
+.purchases-totals { margin: 12px 0; padding: 9px 12px; border-radius: 3px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .07em; }
+.purchases-total-weight { color: var(--text); font-weight: 500; }
+.purchases-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.p-card-stagger { min-width: 0; }
+.p-card { position: relative; padding: 17px; border: 1px solid var(--border) !important; border-radius: 5px !important; background: var(--surface2) !important; }
+.p-card::before { content: ''; position: absolute; left: -1px; top: 16px; bottom: 16px; width: 2px; background: var(--gain); }
+.p-card.is-loss::before { background: var(--loss); }
+.pcard-header { margin-bottom: 18px; }
+.pcard-weight-row { gap: 5px; }
+.pcard-weight { font: 600 28px/1 'Bodoni Moda', serif; letter-spacing: -.035em; }
+.pcard-unit { font: 500 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.pcard-date { font-size: 8px; line-height: 1.5; }
+.pcard-btn { min-width: 31px; min-height: 31px; border-radius: 3px; font-size: 11px; }
+.gl-row { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 1px; padding: 1px; background: var(--border); }
+.gl-col { min-width: 0; padding: 10px !important; background: var(--surface); }
+.gl-divider { display: none; }
+.gl-label { font: 500 8px var(--mono); letter-spacing: .09em; }
+.gl-val { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.gl-main { font-family: 'Bodoni Moda', serif; font-size: 15px; }
+.return-pct { font: 500 8px var(--mono); color: currentColor; }
+
+#purchases-section .empty-state { min-height: 260px; padding: 38px 20px; border: 1px dashed var(--border-hi); border-radius: 4px; background: linear-gradient(135deg, transparent, rgba(220,184,93,.035)); }
+.ledger-empty-icon { width: 58px; height: 58px; color: var(--gold-dim); }
+#purchases-section .empty-state strong { font: 600 21px 'Bodoni Moda', serif; }
+#purchases-section .empty-state p { max-width: 420px; margin: 0 auto; color: var(--text-3); font: 9px/1.65 var(--mono); }
+.empty-add-btn { margin-top: 8px; padding-inline: 18px; border-radius: 3px; }
+
+@media (max-width: 900px) {
+    .purchases-list { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    .purchases-header { flex-direction: column; }
+    .section-actions { width: 100%; justify-content: flex-start; }
+    .sort-select { flex: 1; }
+    .ledger-summary { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .gl-row { grid-template-columns: 1fr 1fr; }
+    .gl-col:last-child { grid-column: 1 / -1; }
+    .purchases-totals { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 </style>
