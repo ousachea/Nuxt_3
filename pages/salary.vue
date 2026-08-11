@@ -13,8 +13,10 @@ const period = ref('month')            // 'month' | 'year' — how salary is ent
 const salary = ref(1200)               // in `currency`, per `period`
 const raisePct = ref(7)
 
-const taxMode = ref('brackets')        // 'none' | 'flat' | 'brackets'
+const taxMode = ref('brackets')        // 'none' | 'flat' | 'brackets' | 'payslip'
 const flatRate = ref(10)
+const payslipTax = ref(0)              // exact amount deducted, per month, in `currency`
+const payslipMarginal = ref(10)        // rate applied to the raise on top of that anchor
 const brackets = ref([])               // [{ upTo: number|null, rate: number }] monthly, in `currency`
 const presetName = ref('Cambodia — Tax on Salary')
 
@@ -100,9 +102,9 @@ function progressiveTax (taxable) {
   return tax
 }
 
-function marginalRate (taxable) {
-  if (taxMode.value === 'none') return 0
-  if (taxMode.value === 'flat') return flatRate.value || 0
+/** Rate of the bracket a given taxable amount falls in, ignoring tax mode. */
+function bandRate (taxable) {
+  if (taxable <= 0) return orderedBrackets.value[0]?.rate || 0
   let floor = 0
   for (const band of orderedBrackets.value) {
     const ceiling = band.upTo === null ? Infinity : band.upTo
@@ -110,6 +112,13 @@ function marginalRate (taxable) {
     floor = ceiling
   }
   return orderedBrackets.value[orderedBrackets.value.length - 1]?.rate || 0
+}
+
+function marginalRate (taxable) {
+  if (taxMode.value === 'none') return 0
+  if (taxMode.value === 'flat') return flatRate.value || 0
+  if (taxMode.value === 'payslip') return payslipMarginal.value || 0
+  return bandRate(taxable)
 }
 
 /** Full monthly breakdown for a given monthly gross. */
@@ -120,8 +129,16 @@ function breakdown (monthlyGross) {
   const taxable = Math.max(0, gross - preTax - relief)
 
   let tax = 0
-  if (taxMode.value === 'flat') tax = taxable * ((flatRate.value || 0) / 100)
-  else if (taxMode.value === 'brackets') tax = progressiveTax(taxable)
+  if (taxMode.value === 'flat') {
+    tax = taxable * ((flatRate.value || 0) / 100)
+  } else if (taxMode.value === 'brackets') {
+    tax = progressiveTax(taxable)
+  } else if (taxMode.value === 'payslip') {
+    // Anchor on the amount actually deducted, then tax only the change in
+    // gross at the marginal rate — which is how a raise is really taxed.
+    const anchor = Math.max(0, payslipTax.value || 0)
+    tax = Math.max(0, anchor + (gross - monthlyNow.value) * ((payslipMarginal.value || 0) / 100))
+  }
 
   const postTax = Math.max(0, postTaxDeduction.value || 0)
   const net = gross - preTax - tax - postTax
@@ -145,20 +162,46 @@ const monthlyNext = computed(() => monthlyNow.value * (1 + (raisePct.value || 0)
 const before = computed(() => breakdown(monthlyNow.value))
 const after = computed(() => breakdown(monthlyNext.value))
 
+/* Rates solved backwards from the amount on the payslip. */
+const payslipOnGross = computed(() => (before.value.gross > 0 ? ((payslipTax.value || 0) / before.value.gross) * 100 : 0))
+const payslipOnTaxable = computed(() => (before.value.taxable > 0 ? ((payslipTax.value || 0) / before.value.taxable) * 100 : 0))
+const suggestedMarginal = computed(() => bandRate(before.value.taxable))
+const bracketWouldPredict = computed(() => progressiveTax(before.value.taxable))
+
 const grossGain = computed(() => after.value.gross - before.value.gross)
 const netGain = computed(() => after.value.net - before.value.net)
 const taxGain = computed(() => after.value.tax - before.value.tax)
 const keepRate = computed(() => (grossGain.value > 0 ? (netGain.value / grossGain.value) * 100 : null))
 
-/** Two-way: type a target salary and the raise % is solved backwards. */
-const targetSalary = computed({
-  get: () => (period.value === 'year' ? monthlyNext.value * 12 : monthlyNext.value),
-  set: (value) => {
-    const base = salary.value || 0
-    if (base <= 0) return
-    raisePct.value = Math.round(((Number(value) || 0) / base - 1) * 1000) / 10
-  },
-})
+/* Target salary and the raise % drive each other. The field keeps its own
+   draft string while focused, so the value recomputed from raisePct never
+   rewrites the input under the cursor mid-keystroke. */
+const targetSalary = computed(() => (period.value === 'year' ? monthlyNext.value * 12 : monthlyNext.value))
+
+const targetDraft = ref('')
+const targetFocused = ref(false)
+
+const snapMoney = value => (currency.value === 'USD' ? Math.round(value * 100) / 100 : Math.round(value))
+
+watch(targetSalary, (value) => {
+  if (!targetFocused.value) targetDraft.value = String(snapMoney(value))
+}, { immediate: true })
+
+/** Typing a target salary solves the percentage backwards, live. */
+function applyTarget (raw) {
+  targetDraft.value = raw
+  const base = salary.value || 0
+  const value = Number(raw)
+  if (raw === '' || !Number.isFinite(value) || base <= 0) return
+  // 3dp keeps the solved target within a cent of what was typed; 1dp would
+  // visibly miss (a 11.4% solve lands ~20c away from a 11.417% one).
+  raisePct.value = Math.round((value / base - 1) * 100000) / 1000
+}
+
+function blurTarget () {
+  targetFocused.value = false
+  targetDraft.value = String(snapMoney(targetSalary.value))
+}
 
 const projection = computed(() => {
   const rows = []
@@ -209,7 +252,8 @@ const RAISE_CHIPS = [0, 3, 5, 7, 10, 15, 20, 30]
 /* --- persistence -------------------------------------------------- */
 const KEYS = {
   currency, period, salary, raisePct, taxMode, flatRate, brackets, presetName,
-  khrPerUsd, dependents, dependentRelief, preTaxDeduction, postTaxDeduction, projectionYears,
+  payslipTax, payslipMarginal, khrPerUsd, dependents, dependentRelief,
+  preTaxDeduction, postTaxDeduction, projectionYears,
 }
 
 let hydrated = false
@@ -253,6 +297,7 @@ function switchCurrency (next) {
   scale(salary)
   scale(preTaxDeduction)
   scale(postTaxDeduction)
+  scale(payslipTax)
   currency.value = next
   if (presetName.value.startsWith('Cambodia')) loadCambodiaPreset()
   else {
@@ -269,20 +314,6 @@ useHead({ title: 'Salary & Raise Calculator' })
 
 <template>
   <div class="pay-shell">
-    <!-- Backdrop stack: shape grid → colour glows → grain film -->
-    <div class="pay-canvas" aria-hidden="true">
-      <ShapeGrid
-        shape="square"
-        direction="diagonal"
-        :speed="0.35"
-        :square-size="46"
-        border-color="rgba(236, 231, 220, 0.06)"
-        hover-fill-color="rgba(216, 182, 106, 0.22)"
-        :hover-trail-amount="6"
-        vignette-color="rgba(9, 12, 11, 0.86)"
-        pointer-target="window"
-      />
-    </div>
     <div class="pay-glow" aria-hidden="true" />
     <div class="pay-grain" aria-hidden="true" />
 
@@ -394,13 +425,24 @@ useHead({ title: 'Salary & Raise Calculator' })
                   <input v-model.number="raisePct" type="number" min="-100" step="0.1" inputmode="decimal">
                   <i class="trail">%</i>
                 </div>
+                <em class="field-echo">gets you to {{ money(targetSalary) }} / {{ period }}</em>
               </label>
               <label class="field">
                 <span>…or target salary / {{ period }}</span>
                 <div class="amount">
                   <i>{{ symbol }}</i>
-                  <input v-model.number="targetSalary" type="number" min="0" step="any" inputmode="decimal">
+                  <input
+                    :value="targetDraft"
+                    type="number"
+                    min="0"
+                    step="any"
+                    inputmode="decimal"
+                    @focus="targetFocused = true"
+                    @input="applyTarget($event.target.value)"
+                    @blur="blurTarget"
+                  >
                 </div>
+                <em class="field-echo">needs {{ raisePct >= 0 ? '+' : '' }}{{ pct(raisePct) }}</em>
               </label>
             </div>
           </article>
@@ -412,6 +454,7 @@ useHead({ title: 'Salary & Raise Calculator' })
               <div class="seg">
                 <button :class="{ on: taxMode === 'brackets' }" @click="taxMode = 'brackets'">Brackets</button>
                 <button :class="{ on: taxMode === 'flat' }" @click="taxMode = 'flat'">Flat</button>
+                <button :class="{ on: taxMode === 'payslip' }" @click="taxMode = 'payslip'">Payslip</button>
                 <button :class="{ on: taxMode === 'none' }" @click="taxMode = 'none'">None</button>
               </div>
             </div>
@@ -469,6 +512,53 @@ useHead({ title: 'Salary & Raise Calculator' })
               </table>
 
               <button class="ghost wide" @click="addBracket">+ Add band</button>
+            </template>
+
+            <template v-else-if="taxMode === 'payslip'">
+              <label class="field">
+                <span>Tax deducted on your last payslip / month</span>
+                <div class="amount">
+                  <i>{{ symbol }}</i>
+                  <input v-model.number="payslipTax" type="number" min="0" step="any" inputmode="decimal">
+                </div>
+                <em class="field-echo">
+                  = {{ pct(payslipOnGross) }} of gross · {{ pct(payslipOnTaxable) }} of taxable
+                </em>
+              </label>
+
+              <div class="field-row split" style="margin-top: 22px">
+                <label class="field">
+                  <span>Tax on the raise (marginal)</span>
+                  <div class="amount">
+                    <input v-model.number="payslipMarginal" type="number" min="0" max="100" step="0.5">
+                    <i class="trail">%</i>
+                  </div>
+                </label>
+                <div class="solve">
+                  <button class="ghost" @click="payslipMarginal = suggestedMarginal">
+                    Use band rate · {{ pct(suggestedMarginal) }}
+                  </button>
+                  <button class="ghost" @click="payslipMarginal = payslipOnTaxable">
+                    Keep effective · {{ pct(payslipOnTaxable) }}
+                  </button>
+                </div>
+              </div>
+
+              <p class="hint">
+                Your payslip fixes today's tax exactly, so the model starts from a real
+                number instead of assumed brackets. Only the {{ money(grossGain) }} increase
+                gets taxed on top, at the marginal rate — which is how a progressive system
+                actually treats a raise. Make sure the gross in step 01 is the same one this
+                payslip was cut from.
+              </p>
+
+              <p v-if="payslipTax > 0" class="hint compare">
+                For reference, the bracket table would have predicted
+                <b>{{ money(bracketWouldPredict) }}</b> at this gross —
+                {{ Math.abs(bracketWouldPredict - payslipTax) < 0.5
+                  ? 'a match, so your bracket setup looks right.'
+                  : `${signedMoney(bracketWouldPredict - payslipTax)} against your payslip.` }}
+              </p>
             </template>
 
             <p v-else class="hint">No tax applied — this is the pure gross view.</p>
@@ -682,27 +772,29 @@ useHead({ title: 'Salary & Raise Calculator' })
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
 
 .pay-shell {
-  --ink: #090c0b;
-  --ink-2: #131815;
-  --line: rgba(236, 231, 220, 0.13);
-  --line-2: rgba(236, 231, 220, 0.26);
-  --bone: #ece7dc;
-  --dim: #878d86;
-  --paper: #f3eee2;
+  /* Paper stock the page is printed on; the payslip is a brighter sheet
+     laid on top of it, so the two never flatten into each other. */
+  --ground: #eae2d2;
+  --rule: rgba(28, 31, 23, 0.14);
+  --rule-2: rgba(28, 31, 23, 0.28);
+  --ink: #1c1f17;
+  --muted: #5c5f54;
+  --paper: #fbf8f1;
   --paper-ink: #191c15;
-  --jade: #6fd6a4;
-  --verm: #e8613b;
-  --sand: #d8b66a;
+  --jade: #1a6b43;
+  --verm: #a63216;
+  --sand: #7a5e0d;
 
   position: relative;
+  isolation: isolate; /* confines the multiply blending below to this page */
   min-height: 100vh;
   overflow-x: hidden;
-  color: var(--bone);
+  color: var(--ink);
 
-  /* Base plate. The ShapeGrid canvas, the colour glows and the grain film
-     stack over it as fixed layers, all below the content (z-index 1). */
-  background-color: var(--ink);
-  background-image: linear-gradient(178deg, #141a17 0%, #0b0f0d 44%, #070a09 100%);
+  /* Base sheet, with the tone lifting slightly toward the top edge. The
+     glow and grain films stack over it, all below the content (z-index 1). */
+  background-color: var(--ground);
+  background-image: linear-gradient(178deg, #f2ebde 0%, #eae2d2 46%, #e2d8c4 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
@@ -710,29 +802,28 @@ useHead({ title: 'Salary & Raise Calculator' })
   font-size: 14px;
 }
 
-.pay-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-}
-
-/* Warm sand light from the top-right, cool jade bounce from the bottom-left.
-   Sits above the grid so the glows tint it instead of being buried by it. */
+/* Uneven tone in the stock — a warm tea-stain toward the top-right, a cooler
+   cast bottom-left. Multiplied so they darken the sheet like real foxing
+   rather than sitting on it as coloured light. */
 .pay-glow {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  mix-blend-mode: multiply;
   background-image:
-    radial-gradient(78% 52% at 86% -8%, rgba(216, 182, 106, 0.15), transparent 62%),
-    radial-gradient(62% 48% at 0% 104%, rgba(111, 214, 164, 0.1), transparent 66%);
+    radial-gradient(80% 54% at 86% -8%, rgba(178, 141, 74, 0.2), transparent 64%),
+    radial-gradient(64% 50% at 0% 104%, rgba(96, 116, 96, 0.14), transparent 68%);
 }
 
+/* Fibre. Multiplied and a touch stronger than it was on the dark theme —
+   on paper the tooth needs to read, not just take the edge off. */
 .pay-grain {
   position: fixed;
   inset: 0;
   z-index: 0;
-  opacity: 0.045;
+  opacity: 0.09;
+  mix-blend-mode: multiply;
   pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
@@ -746,7 +837,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   justify-content: space-between;
   height: 68px;
   padding: 0 clamp(20px, 5vw, 68px);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
 }
 
 .pay-mark, .pay-top-meta {
@@ -755,17 +846,17 @@ useHead({ title: 'Salary & Raise Calculator' })
   gap: 12px;
   font-size: 10px;
   letter-spacing: 0.14em;
-  color: var(--dim);
+  color: var(--muted);
 }
 
-.pay-mark { color: var(--bone); }
+.pay-mark { color: var(--ink); }
 
 .pay-mark-glyph {
   display: grid;
   place-items: center;
   width: 28px;
   height: 28px;
-  border: 1px solid var(--line-2);
+  border: 1px solid var(--rule-2);
   border-radius: 50%;
   font-family: 'Instrument Serif', serif;
   font-size: 15px;
@@ -777,11 +868,11 @@ useHead({ title: 'Salary & Raise Calculator' })
   height: 6px;
   border-radius: 50%;
   background: var(--jade);
-  box-shadow: 0 0 0 4px rgba(111, 214, 164, 0.14);
+  box-shadow: 0 0 0 4px rgba(26, 107, 67, 0.18);
   animation: blip 2.6s ease infinite;
 }
 
-.pay-top-sep { width: 22px; height: 1px; background: var(--line-2); }
+.pay-top-sep { width: 22px; height: 1px; background: var(--rule-2); }
 
 /* ---------- layout ---------- */
 .pay-main {
@@ -799,7 +890,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   gap: 48px;
   align-items: end;
   padding: clamp(56px, 8vw, 108px) 0 56px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
 }
 
 .kicker {
@@ -807,7 +898,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
 }
 
 .kicker span { margin-right: 18px; color: var(--sand); }
@@ -827,7 +918,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   margin-top: 26px;
   font-size: 13px;
   line-height: 1.75;
-  color: var(--dim);
+  color: var(--muted);
 }
 
 .dial-wrap { animation: rise 0.8s 0.15s both; }
@@ -839,7 +930,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   margin-bottom: 26px;
   border-radius: 50%;
   background:
-    conic-gradient(var(--jade) 0 var(--sweep), rgba(232, 97, 59, 0.5) var(--sweep) 100%);
+    conic-gradient(var(--jade) 0 var(--sweep), rgba(166, 50, 22, 0.34) var(--sweep) 100%);
   transition: background 0.5s ease;
 }
 
@@ -847,7 +938,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   content: '';
   position: absolute;
   inset: -9px;
-  border: 1px dashed var(--line-2);
+  border: 1px dashed var(--rule-2);
   border-radius: 50%;
 }
 
@@ -859,8 +950,8 @@ useHead({ title: 'Salary & Raise Calculator' })
   gap: 6px;
   text-align: center;
   border-radius: 50%;
-  background: linear-gradient(158deg, #161c19 0%, #0a0e0c 72%);
-  box-shadow: inset 0 1px 0 rgba(236, 231, 220, 0.06);
+  background: linear-gradient(158deg, #fbf7ee 0%, #ece4d4 74%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 .dial-value {
@@ -875,10 +966,10 @@ useHead({ title: 'Salary & Raise Calculator' })
   line-height: 1.5;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
 }
 
-.dial-legend { border-top: 1px solid var(--line); }
+.dial-legend { border-top: 1px solid var(--rule); }
 
 .dial-legend div {
   display: flex;
@@ -886,14 +977,14 @@ useHead({ title: 'Salary & Raise Calculator' })
   justify-content: space-between;
   gap: 16px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
 }
 
 .dial-legend span {
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
 }
 
 .dial-legend b { font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -906,14 +997,14 @@ useHead({ title: 'Salary & Raise Calculator' })
   grid-template-columns: minmax(0, 1fr) 400px;
   gap: 44px;
   padding: 56px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
 }
 
 .controls { display: flex; flex-direction: column; gap: 2px; }
 
 .panel {
   padding: 26px 0 30px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
   animation: rise 0.7s both;
   animation-delay: var(--delay, 0ms);
 }
@@ -933,7 +1024,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--bone);
+  color: var(--ink);
 }
 
 .panel-note {
@@ -944,7 +1035,7 @@ useHead({ title: 'Salary & Raise Calculator' })
 }
 
 /* segmented toggles */
-.seg { display: flex; border: 1px solid var(--line-2); }
+.seg { display: flex; flex-wrap: wrap; border: 1px solid var(--rule-2); }
 
 .seg button {
   padding: 6px 13px;
@@ -952,17 +1043,17 @@ useHead({ title: 'Salary & Raise Calculator' })
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
   background: transparent;
   border: 0;
-  border-left: 1px solid var(--line-2);
+  border-left: 1px solid var(--rule-2);
   cursor: pointer;
   transition: color 0.18s, background 0.18s;
 }
 
 .seg button:first-child { border-left: 0; }
-.seg button:hover { color: var(--bone); }
-.seg button.on { color: var(--ink); background: var(--bone); }
+.seg button:hover { color: var(--ink); }
+.seg button.on { color: var(--ground); background: var(--ink); }
 .seg.tall button { padding: 12px 15px; }
 
 /* fields */
@@ -977,7 +1068,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   font-size: 9px;
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
 }
 
 .amount {
@@ -985,12 +1076,12 @@ useHead({ title: 'Salary & Raise Calculator' })
   align-items: baseline;
   gap: 7px;
   padding-bottom: 7px;
-  border-bottom: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--rule-2);
   transition: border-color 0.2s;
 }
 
 .amount:focus-within { border-color: var(--sand); }
-.amount i { font-style: normal; font-size: 15px; color: var(--dim); }
+.amount i { font-style: normal; font-size: 15px; color: var(--muted); }
 .amount i.trail { margin-left: auto; }
 
 .amount input {
@@ -1001,7 +1092,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   font-size: 24px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
-  color: var(--bone);
+  color: var(--ink);
   background: transparent;
   border: 0;
   outline: none;
@@ -1015,12 +1106,32 @@ useHead({ title: 'Salary & Raise Calculator' })
 .amount input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .amount input[type='number'] { -moz-appearance: textfield; }
 
+.field-echo {
+  display: block;
+  margin-top: 8px;
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sand);
+}
+
 .hint {
   margin-top: 16px;
   font-size: 11px;
   line-height: 1.7;
-  color: var(--dim);
+  color: var(--muted);
 }
+
+.hint.compare {
+  padding-top: 13px;
+  border-top: 1px dotted var(--rule-2);
+}
+
+.hint.compare b { font-weight: 500; color: var(--ink); }
+
+.solve { display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; }
+.solve .ghost { width: 100%; text-align: left; }
 
 /* chips */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
@@ -1030,17 +1141,17 @@ useHead({ title: 'Salary & Raise Calculator' })
   font: inherit;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: var(--dim);
+  color: var(--muted);
   background: transparent;
-  border: 1px solid var(--line-2);
+  border: 1px solid var(--rule-2);
   cursor: pointer;
   transition: all 0.18s;
 }
 
-.chips button:hover { color: var(--bone); border-color: var(--bone); }
+.chips button:hover { color: var(--ink); border-color: var(--ink); }
 
 .chips button.on {
-  color: var(--ink);
+  color: var(--ground);
   background: var(--sand);
   border-color: var(--sand);
 }
@@ -1058,7 +1169,7 @@ useHead({ title: 'Salary & Raise Calculator' })
 
 .slider::-webkit-slider-runnable-track {
   height: 1px;
-  background: var(--line-2);
+  background: var(--rule-2);
 }
 
 .slider::-webkit-slider-thumb {
@@ -1068,12 +1179,12 @@ useHead({ title: 'Salary & Raise Calculator' })
   margin-top: -7px;
   border-radius: 50%;
   background: var(--sand);
-  box-shadow: 0 0 0 5px rgba(216, 182, 106, 0.16);
+  box-shadow: 0 0 0 5px rgba(122, 94, 13, 0.2);
   transition: box-shadow 0.2s;
 }
 
-.slider:hover::-webkit-slider-thumb { box-shadow: 0 0 0 8px rgba(216, 182, 106, 0.22); }
-.slider::-moz-range-track { height: 1px; background: var(--line-2); }
+.slider:hover::-webkit-slider-thumb { box-shadow: 0 0 0 8px rgba(122, 94, 13, 0.28); }
+.slider::-moz-range-track { height: 1px; background: var(--rule-2); }
 .slider::-moz-range-thumb { width: 15px; height: 15px; border: 0; border-radius: 50%; background: var(--sand); }
 .slider.slim { width: 150px; margin: 0; }
 
@@ -1086,9 +1197,9 @@ useHead({ title: 'Salary & Raise Calculator' })
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
   background: transparent;
-  border: 1px dashed var(--line-2);
+  border: 1px dashed var(--rule-2);
   cursor: pointer;
   transition: all 0.18s;
 }
@@ -1104,7 +1215,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
 }
 
 .rate-line input {
@@ -1117,7 +1228,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   text-align: center;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--rule-2);
   outline: none;
 }
 
@@ -1130,12 +1241,12 @@ useHead({ title: 'Salary & Raise Calculator' })
   letter-spacing: 0.12em;
   text-transform: uppercase;
   text-align: left;
-  color: var(--dim);
-  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
 }
 
 .bands th.num, .bands td.num { text-align: right; }
-.bands td { padding: 9px 0; border-bottom: 1px solid var(--line); }
+.bands td { padding: 9px 0; border-bottom: 1px solid var(--rule); }
 .bands td.shrink { width: 30px; text-align: right; }
 .bands .band-open { font-size: 13px; color: var(--sand); }
 
@@ -1145,7 +1256,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   font: inherit;
   font-size: 15px;
   line-height: 1;
-  color: var(--dim);
+  color: var(--muted);
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -1160,7 +1271,7 @@ useHead({ title: 'Salary & Raise Calculator' })
 .slip-wrap {
   position: sticky;
   top: 24px;
-  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 22px 34px rgba(58, 48, 26, 0.22));
   animation: rise 0.8s 0.25s both;
 }
 
@@ -1339,7 +1450,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
 }
 
 .years b { color: var(--sand); font-weight: 500; }
@@ -1354,22 +1465,22 @@ useHead({ title: 'Salary & Raise Calculator' })
   letter-spacing: 0.13em;
   text-transform: uppercase;
   text-align: left;
-  color: var(--dim);
-  border-bottom: 1px solid var(--line-2);
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule-2);
 }
 
 .proj th.num, .proj td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .proj th.growth, .proj td.growth { width: 22%; padding-right: 0; }
-.proj td { padding: 13px 14px 13px 0; font-size: 13px; border-bottom: 1px solid var(--line); }
+.proj td { padding: 13px 14px 13px 0; font-size: 13px; border-bottom: 1px solid var(--rule); }
 .proj tbody tr { transition: background 0.18s; }
-.proj tbody tr:hover { background: rgba(236, 231, 220, 0.04); }
+.proj tbody tr:hover { background: rgba(28, 31, 23, 0.045); }
 .proj td.tax { color: var(--verm); }
 .proj td.net { color: var(--jade); }
-.proj td.dim { color: var(--dim); }
+.proj td.dim { color: var(--muted); }
 .proj td.up { color: var(--jade); }
 .proj td.down { color: var(--verm); }
 
-.track { display: block; height: 5px; background: rgba(236, 231, 220, 0.09); }
+.track { display: block; height: 5px; background: rgba(28, 31, 23, 0.1); }
 .track i { display: block; height: 100%; background: linear-gradient(90deg, var(--sand), var(--jade)); transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
 
 .footnote {
@@ -1377,7 +1488,7 @@ useHead({ title: 'Salary & Raise Calculator' })
   margin-top: 26px;
   font-size: 11px;
   line-height: 1.8;
-  color: var(--dim);
+  color: var(--muted);
 }
 
 /* ---------- motion ---------- */
