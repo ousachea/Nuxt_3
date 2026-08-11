@@ -6,6 +6,7 @@ const pageDetails = {
   '/budget': { eyebrow: 'Finance', description: 'Plan spending, build savings and see the month clearly.', tone: 'blue', symbol: '₿' },
   '/exchange': { eyebrow: 'Currency', description: 'Convert between US dollars and Cambodian riel in seconds.', tone: 'coral', symbol: '៛' },
   '/phone': { eyebrow: 'Utility', description: 'A focused mobile workspace, designed for the small screen.', tone: 'violet', symbol: '⌁' },
+  '/salary': { eyebrow: 'Income', description: 'Model a pay rise and see what survives the tax bands.', tone: 'teal', symbol: '%' },
   '/setup': { eyebrow: 'System', description: 'Get a new workstation configured and ready to build.', tone: 'green', symbol: '⌘' },
   '/idol': { eyebrow: 'Culture', description: 'Browse artists, profiles and the people inspiring the moment.', tone: 'pink', symbol: '★' },
   '/js': { eyebrow: 'Code', description: 'A focused JavaScript workspace for experimenting and building.', tone: 'lime', symbol: 'JS' },
@@ -252,6 +253,7 @@ useHead({ title: 'Ousa — Personal Tools' })
 .tone-green { background: #9fbd87; }
 .tone-pink { background: #e6a5b9; }
 .tone-lime { background: #c7d86b; }
+.tone-teal { background: #8ac9bb; }
 .disabled { opacity: .55; pointer-events: none; }
 
 .home-footer { display: flex; align-items: center; gap: 20px; height: 94px; padding: 0 clamp(24px, 5vw, 76px); border-top: 1px solid var(--line); }
