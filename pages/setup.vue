@@ -1,5 +1,5 @@
 <template>
-  <div class="app-wrapper">
+  <div class="app-wrapper" @input="sfx.typing($event)">
     <div class="mesh-gradient"></div>
 
     <div class="container">
@@ -41,7 +41,7 @@
         </section>
 
         <!-- Application Suite -->
-        <section class="step-card main-card fade-in">
+        <section class="step-card main-card fade-in" @change="onAppToggle">
           <div class="card-header justify-between">
             <div class="flex-center gap-12">
               <span class="step-idx">04</span>
@@ -161,6 +161,9 @@
 </template>
 
 <script setup>
+// Self-contained full-bleed shell: no site nav/footer chrome.
+definePageMeta({ layout: false })
+
 import { ref, computed, watch, onMounted } from 'vue'
 
 const staticSteps = [
@@ -259,17 +262,30 @@ ${selectedApps.value.map(app => `  ${app}`).join(' \\\n')}
 `
 })
 
+const sfx = useSfx()
+
+/** App chips are real selections — cue from the resulting checked state. */
+const onAppToggle = (event) => {
+  const el = event.target
+  if (!el || el.type !== 'checkbox') return
+  sfx.play(el.checked ? 'check' : 'uncheck')
+}
+
 const selectAll = () => {
   selectedApps.value = [...allApps]
+  sfx.play('select')
 }
 
 const clearAll = () => {
   selectedApps.value = []
+  sfx.play('deselect')
 }
 
 const copyToClipboard = async (text, index) => {
   try {
     await navigator.clipboard.writeText(text)
+    // Only after the write actually resolves.
+    sfx.playAsync('copy')
 
     copiedIndex.value = index
 
@@ -277,6 +293,7 @@ const copyToClipboard = async (text, index) => {
       copiedIndex.value = null
     }, 2000)
   } catch (error) {
+    sfx.playAsync('error')
     console.error(error)
   }
 }

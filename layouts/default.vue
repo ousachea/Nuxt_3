@@ -1,12 +1,24 @@
+<script setup>
+// Chrome shared by every laid-out page, so the nav cue lives here rather than
+// being repeated per page.
+const sfx = useSfx()
+</script>
+
 <template>
   <div class="site">
     <header class="nav">
-      <NuxtLink to="/" class="nav-logo">
+      <NuxtLink
+        to="/"
+        class="nav-logo"
+        @click="sfx.play('back')"
+        @pointerenter="sfx.throttled('hover', 400)"
+      >
         <svg class="nav-home-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
           <path d="M1 6.5L7 1l6 5.5V13H9.5v-3.5h-5V13H1V6.5z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
         </svg>
         Home
       </NuxtLink>
+      <SoundToggle />
     </header>
     <main class="main">
       <slot />

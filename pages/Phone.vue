@@ -274,8 +274,12 @@ function initTheme() {
   applyTheme(initial)
 }
 
+const sfx = useSfx()
+
 function toggleTheme() {
-  applyTheme(theme.value === 'light' ? 'dark' : 'light')
+  const next = theme.value === 'light' ? 'dark' : 'light'
+  applyTheme(next)
+  sfx.play(next === 'dark' ? 'toggle-on' : 'toggle-off')
 }
 
 // Hex values mirror --border / --accent tokens above — DotGrid needs literal hex, not CSS vars.
@@ -316,6 +320,7 @@ function addRecent(entry: Omit<RecentEntry, 'checkedAt'>) {
 function clearRecents() {
   recents.value = []
   persistRecents()
+  sfx.play('delete')
 }
 
 // ---------- Checker state ----------
@@ -371,14 +376,23 @@ const srAnnouncement = computed(() => {
 })
 
 function clearInput() {
+  sfx.play('cancel')
   raw.value = ''
 }
 
 function trySample(prefix: string) {
+  sfx.play('select')
   raw.value = prefix
 }
 
+/** Replaying a stored search is the same gesture as picking a prefix. */
+function useRecent(entry: RecentEntry) {
+  sfx.play('select')
+  raw.value = entry.formatted.replace(/\s+/g, '')
+}
+
 function selectPrefix(prefix: string) {
+  sfx.play('select')
   raw.value = prefix
   document.getElementById('checker-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
@@ -401,11 +415,12 @@ async function copyNumber() {
   if (!result.value.carrier) return
   try {
     await navigator.clipboard.writeText(result.value.formatted)
+    sfx.playAsync('copy')
     copied.value = true
     clearTimeout(copiedTimeout)
     copiedTimeout = setTimeout(() => (copied.value = false), 1500)
   } catch {
-    // Clipboard API may be unavailable — fail quietly.
+    // Clipboard API may be unavailable — fail quietly (visually and audibly).
   }
 }
 
@@ -468,7 +483,7 @@ useHead({
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" @input="sfx.typing($event)">
     <div class="dot-bg" aria-hidden="true">
       <DotGrid
         :dot-size="4"
@@ -688,7 +703,7 @@ useHead({
               :key="entry.formatted + entry.checkedAt"
               type="button"
               class="recent-chip"
-              @click="raw = entry.formatted.replace(/\s+/g, '')"
+              @click="useRecent(entry)"
             >
               {{ entry.formatted }}
             </button>

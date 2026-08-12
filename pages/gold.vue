@@ -1,5 +1,5 @@
 <template>
-    <div class="app" :class="{ dark: isDark }">
+    <div class="app" ref="appEl" :class="{ dark: isDark }" @input="sfx.typing($event)">
         <!-- Screensaver -->
         <transition name="ss-fade">
             <div v-if="screensaver" class="screensaver" @click="exitScreensaver" @keydown.esc="exitScreensaver">
@@ -64,7 +64,7 @@
         </div>
 
         <!-- Header -->
-        <header class="header">
+        <header class="header" ref="headerEl">
             <div class="header-inner">
                 <div class="logo">
                     <span class="logo-gem" :class="{ 'spin-coin': gemSpin }">◈</span>
@@ -82,7 +82,7 @@
                         :aria-label="lang === 'en' ? 'Switch to Khmer' : 'Switch to English'">
                         {{ lang === 'en' ? 'ខ្មែរ' : 'EN' }}
                     </button>
-                    <button class="ctrl-btn khr-btn" @click="showKHR = !showKHR; save()"
+                    <button class="ctrl-btn khr-btn" @click="toggleKHR"
                         :aria-label="showKHR ? 'Switch to USD' : 'Switch to KHR'">
                         {{ showKHR ? 'USD' : '៛' }}
                     </button>
@@ -111,6 +111,21 @@
                 </div>
             </div>
             <div class="sticky-divider" v-if="displayPrice"></div>
+            <div class="sticky-gl" v-if="purchases.length">
+                <div class="sticky-row-main">
+                    <span class="sticky-gl-val" :class="totalGL >= 0 ? 'gain-text' : 'loss-text'">
+                        {{ (totalGL >= 0 ? '+' : '−') + fmt(Math.abs(totalGL)) }}
+                    </span>
+                    <span class="sticky-unit">{{ t.totalGainLoss }}</span>
+                </div>
+                <div class="sticky-row-sub" v-if="totalInvested > 0">
+                    <span class="sticky-gl-pct" :class="totalGL >= 0 ? 'gain-text' : 'loss-text'">
+                        {{ totalGL >= 0 ? '▲' : '▼' }} {{ Math.abs(totalGL / totalInvested * 100).toFixed(1) }}%
+                    </span>
+                    <span class="sticky-unit-sub">{{ t.currentValue }} {{ fmt(totalCurrent) }}</span>
+                </div>
+            </div>
+            <div class="sticky-divider" v-if="purchases.length"></div>
             <button class="sticky-refresh" @click="fetchPrice" :disabled="loading">↻</button>
         </div>
 
@@ -721,6 +736,9 @@
 </template>
 
 <script setup>
+// Self-contained full-bleed shell: no site nav/footer chrome.
+definePageMeta({ layout: false })
+
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 
@@ -1213,8 +1231,9 @@ const qrefHoldingsRows = computed(() => {
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
 function today() { return new Date().toISOString().split('T')[0] }
-function toggleLang() { lang.value = lang.value === 'en' ? 'km' : 'en'; save() }
-function toggleDark() { isDark.value = !isDark.value; save() }
+function toggleLang() { lang.value = lang.value === 'en' ? 'km' : 'en'; sfx.play('select'); save() }
+function toggleDark() { isDark.value = !isDark.value; sfx.play(isDark.value ? 'toggle-on' : 'toggle-off'); save() }
+function toggleKHR() { showKHR.value = !showKHR.value; sfx.play('select'); save() }
 
 function toGrams(w, u) { return w * (UNIT_GRAMS[u] || 1) }
 function fromGrams(g, u) { return g / (UNIT_GRAMS[u] || 1) }
@@ -1234,12 +1253,18 @@ function fmt(n, dec = 2) {
     return '$' + n.toFixed(dec)
 }
 
+const sfx = useSfx()
+
 function flash(msg, type = 'success') {
+    // flash() is this page's single feedback channel, so sonifying it here
+    // covers every validation and outcome path without stacking cues.
+    sfx.playAsync(type === 'error' ? 'error' : 'success')
     flashMsg.value = msg; flashType.value = type
     setTimeout(() => flashMsg.value = '', 3000)
 }
 
 function switchMethod(m) {
+    if (priceMethod.value !== m) sfx.play('select')
     priceMethod.value = m; customPrice.value = null; goldPrice.value = null; save()
 }
 
@@ -1271,6 +1296,7 @@ async function sha256(str) {
 }
 
 async function openPwModal() {
+    sfx.play('open')
     showPwModal.value = true
     pwInput.value = ''
     pwError.value = ''
@@ -1312,6 +1338,7 @@ async function unlockFromModal() {
         successfulUnlock()
         
     } else {
+        sfx.play('error')
         pwError.value = 'Incorrect password'
         pwShake.value = false
         await nextTick(); pwShake.value = true
@@ -1321,6 +1348,7 @@ async function unlockFromModal() {
 
 // Helper abstraction to keep the unlock function clean
 function successfulUnlock() {
+    sfx.play('unlock')
     pwUnlockBurst.value = true
     setTimeout(() => pwUnlockBurst.value = false, 800)
     pwInput.value = ''
@@ -1331,6 +1359,7 @@ function successfulUnlock() {
 }
 
 function lockFromModal() {
+    sfx.play('lock')
     isOwner.value = false
 
     // Clean out both sets of IDs to restore back to the anonymous local state
@@ -1361,6 +1390,7 @@ async function saveGoldPrice(price) {
 // ─── Price Fetch ──────────────────────────────────────────────────────────────
 async function fetchPrice() {
     loading.value = true
+    sfx.startLoop('gold-price', 'loading')
     let ok = false
     let provider = ''
     let observedAt = null
@@ -1443,6 +1473,8 @@ async function fetchPrice() {
         }
     }
     loading.value = false
+    // Every exit path passes through here, so the loop can never be orphaned.
+    sfx.stopLoop('gold-price')
 }
 
 // ─── Purchases ────────────────────────────────────────────────────────────────
@@ -1451,6 +1483,7 @@ function addPurchase() {
     const id = Date.now()
     const entry = { ...draft.value, id }
     purchases.value.push(entry)
+    sfx.play('success')
     newestPurchaseId.value = id
     setTimeout(() => { newestPurchaseId.value = null }, 1400)
     if (gainLoss(entry) >= 0) nextTick(() => burstFrom('#purchases-section .add-purchase-btn'))
@@ -1468,6 +1501,7 @@ function saveEdit() {
     if (!editDraft.value.weight || !editDraft.value.price) { flash('Fill in weight and price', 'error'); return }
     const idx = purchases.value.findIndex(p => p.id === editIdx.value)
     if (idx !== -1) purchases.value[idx] = { ...editDraft.value }
+    sfx.play('success')
     editIdx.value = null; save()
 }
 
@@ -1476,6 +1510,7 @@ function removePurchase(p) {
         const idx = purchases.value.findIndex(x => x.id === p.id)
         if (idx !== -1) purchases.value.splice(idx, 1)
         save()
+        sfx.play('delete')
     }
 }
 
@@ -1492,6 +1527,7 @@ function exportCSV() {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
     a.download = `gold-${today()}.csv`; a.click()
+    sfx.play('success')
 }
 
 function importCSV(e) {
@@ -1533,7 +1569,7 @@ function resetIdle() {
     idleTimer = setTimeout(() => { if (goldPrice.value) screensaver.value = true }, IDLE_MS)
 }
 
-function exitScreensaver() { screensaver.value = false; resetIdle() }
+function exitScreensaver() { screensaver.value = false; sfx.play('wake'); resetIdle() }
 
 function startIdleWatch() {
     ;['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(e =>
@@ -1617,9 +1653,29 @@ function save() {
 
 function load() { try { return JSON.parse(localStorage.getItem('gt4') || 'null') } catch { return null } }
 
-function handleOnline() { isOnline.value = true; fetchPrice() }
-function handleOffline() { isOnline.value = false }
+function handleOnline() { isOnline.value = true; sfx.playAsync('connect'); fetchPrice() }
+function handleOffline() { isOnline.value = false; sfx.playAsync('disconnect') }
 function handleScroll() { showStickyPrice.value = window.scrollY > 100 }
+
+// ─── Header height ────────────────────────────────────────────────────────────
+// Everything pinned below the header offsets by --header-h. The header's height
+// is not a constant — it grows with the offline bar, with breakpoint padding,
+// and by a pixel or two once the webfont swaps in — so measure it rather than
+// hardcoding, which is what left a gap under the sticky price pill.
+const appEl = ref(null)
+const headerEl = ref(null)
+let headerRO = null
+
+function startHeaderMeasure() {
+    if (!appEl.value || !headerEl.value || typeof ResizeObserver === 'undefined') return
+    headerRO = new ResizeObserver(() => {
+        const h = headerEl.value?.offsetHeight
+        if (h) appEl.value?.style.setProperty('--header-h', `${h}px`)
+    })
+    headerRO.observe(headerEl.value)
+}
+
+function stopHeaderMeasure() { headerRO?.disconnect(); headerRO = null }
 
 onMounted(() => {
     const d = load()
@@ -1652,6 +1708,7 @@ onMounted(() => {
     window.addEventListener('scroll', handleScroll, { passive: true })
     startIdleWatch()
     startPriceRenderLoop()
+    startHeaderMeasure()
 })
 onBeforeUnmount(() => {
     window.removeEventListener('online', handleOnline)
@@ -1660,6 +1717,7 @@ onBeforeUnmount(() => {
     stopAutoRefresh()
     stopIdleWatch()
     stopSSClock()
+    stopHeaderMeasure()
     if (rafId) cancelAnimationFrame(rafId)
     if (renderRafId) cancelAnimationFrame(renderRafId)
 })
@@ -1693,6 +1751,10 @@ onBeforeUnmount(() => {
     --font: 'Outfit', system-ui, sans-serif;
     --mono: 'DM Mono', ui-monospace, monospace;
     --touch: 44px;
+    /* Offset for anything pinned below the sticky header. startHeaderMeasure()
+       overwrites this inline from the real header box; this value is only the
+       pre-hydration fallback. */
+    --header-h: 73px;
 }
 
 .app.dark {
@@ -1730,7 +1792,11 @@ onBeforeUnmount(() => {
     font-size: 15px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
+    /* `clip`, not `hidden`: `hidden` turns this into a scroll container, which
+       silently scopes every `position: sticky` inside it (the header and the
+       desktop columns) to an element that never scrolls — so none of them stick.
+       `clip` contains the ambient orbs the same way without that side effect. */
+    overflow-x: clip;
 }
 
 .empty-svg {
@@ -2110,7 +2176,10 @@ onBeforeUnmount(() => {
 /* ── Sticky Price ── */
 .sticky-price {
     position: fixed;
-    top: 0;
+    /* The header is sticky at top:0 with a higher z-index, so a pill pinned to
+       top:0 renders behind it — ghosting through the translucent blur. Hang it
+       off the bottom edge of the header instead. */
+    top: var(--header-h);
     left: 0;
     right: 0;
     transform: translateY(-90px);
@@ -2170,6 +2239,32 @@ onBeforeUnmount(() => {
 }
 
 .sticky-unit-sub { font-size: 11px; color: var(--text-3); }
+
+/* Portfolio G/L — mirrors the price stack beside it so the pill reads as one row. */
+.sticky-gl { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+
+.sticky-gl-val {
+    font-size: 18px;
+    font-weight: 800;
+    font-family: var(--mono);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+}
+
+.sticky-gl-pct {
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--mono);
+    white-space: nowrap;
+}
+
+/* The full-width mobile pill has no room for the secondary read-outs. */
+@media (max-width: 639px) {
+    .sticky-gl .sticky-unit-sub { display: none; }
+}
+@media (max-width: 420px) {
+    .sticky-gl .sticky-unit { display: none; }
+}
 
 .sticky-divider {
     width: 1px;
@@ -3583,7 +3678,7 @@ onBeforeUnmount(() => {
         align-items: start;
     }
 
-    .col-left { grid-column: 1; grid-row: 1 / 3; position: sticky; top: 72px; align-self: start; }
+    .col-left { grid-column: 1; grid-row: 1 / 3; position: sticky; top: var(--header-h); align-self: start; }
     .col-center { grid-column: 2; grid-row: 1; }
     .col-right { grid-column: 2; grid-row: 2; }
     .unit-grid { grid-template-columns: repeat(3, 1fr); }
@@ -3599,9 +3694,9 @@ onBeforeUnmount(() => {
         gap: 14px;
     }
 
-    .col-left { grid-column: 1; grid-row: 1; position: sticky; top: 72px; align-self: start; }
+    .col-left { grid-column: 1; grid-row: 1; position: sticky; top: var(--header-h); align-self: start; }
     .col-center { grid-column: 2; grid-row: 1; }
-    .col-right { grid-column: 3; grid-row: 1; position: sticky; top: 72px; align-self: start; }
+    .col-right { grid-column: 3; grid-row: 1; position: sticky; top: var(--header-h); align-self: start; }
     .unit-grid { grid-template-columns: repeat(3, 1fr); }
     .purchases-list { display: grid; grid-template-columns: 1fr; }
     .price-int { font-size: 52px; }
@@ -3920,9 +4015,12 @@ onBeforeUnmount(() => {
 
 @media (min-width: 1100px) {
     .desktop-grid { display: grid; grid-template-columns: minmax(340px, 5fr) minmax(520px, 7fr); align-items: start; gap: 18px; }
-    .col-left { grid-column: 1; position: static; }
-    .col-center { grid-column: 2; }
-    .col-right { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); position: static; gap: 18px; }
+    .col-left { grid-column: 1; grid-row: 1; position: static; }
+    .col-center { grid-column: 2; grid-row: 1; }
+    /* grid-row must be restated: the earlier min-width:1100px block puts this
+       column on row 1 for the old 3-column desk, and a full-width span on row 1
+       would sit straight on top of the two columns beside it. */
+    .col-right { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); position: static; gap: 18px; }
     .col-right > * { min-width: 0; }
 }
 

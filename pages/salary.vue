@@ -1,4 +1,7 @@
 <script setup>
+// Self-contained full-bleed shell: no site nav/footer chrome.
+definePageMeta({ layout: false })
+
 /* ------------------------------------------------------------------ *
  * Salary raise + tax calculator
  * State is namespaced under `sal_*` in localStorage, matching the
@@ -6,6 +9,16 @@
  * ------------------------------------------------------------------ */
 
 const STORE_KEY = 'sal_calc_v1'
+
+const sfx = useSfx()
+/** Section switches speak their resulting state, not the act of clicking. */
+const sfxSection = (nowOn) => sfx.play(nowOn ? 'toggle-on' : 'toggle-off')
+
+function pickCurrency (next) {
+  if (currency.value === next) return
+  switchCurrency(next)
+  sfx.play('select')
+}
 
 /* --- inputs ------------------------------------------------------- */
 const currency = ref('USD')            // 'USD' | 'KHR'
@@ -20,6 +33,17 @@ const payslipMarginal = ref(10)        // rate applied to the raise on top of th
 const brackets = ref([])               // [{ upTo: number|null, rate: number }] monthly, in `currency`
 const presetName = ref('Cambodia — Tax on Salary')
 
+/* Overtime & benefits. OT is derived from the base salary, so a raise lifts
+   the overtime rate too — that knock-on is most of why OT belongs here. */
+const otMode = ref('rate')             // 'rate' = hourly × multiplier | 'amount' = flat price each
+const otHours = ref(0)                 // OT hours per month, or OT count in 'amount' mode
+const otMultiplier = ref(1.5)          // × the base hourly rate ('rate' mode)
+const otUnitAmount = ref(20)           // paid per OT, in `currency` ('amount' mode)
+const otUnit = ref('night')            // what one OT is: night | shift | day | hour
+const hoursPerMonth = ref(208)         // 48h week × 52/12, the Cambodian standard
+const allowanceAmount = ref(0)         // flat monthly benefit (transport, phone …)
+const extrasTaxable = ref(true)        // do OT + allowances form part of taxable pay?
+
 const khrPerUsd = ref(4100)
 const dependents = ref(0)
 const dependentRelief = ref(0)         // per dependent, per month, in `currency`
@@ -27,6 +51,10 @@ const preTaxDeduction = ref(0)         // per month (pension / NSSF style)
 const postTaxDeduction = ref(0)        // per month (loan, insurance …)
 
 const projectionYears = ref(5)
+
+/* Which optional sections are switched on. Turning one off collapses it and
+   removes it from the maths, while keeping its values for when it comes back. */
+const sections = ref({ overtime: true, increase: true, tax: true, deductions: true, projection: true })
 
 /* --- Cambodia Tax on Salary (monthly, KHR) ------------------------ *
  * Sub-Decree No. 196, in force since 2023. Thresholds are editable
@@ -115,21 +143,42 @@ function bandRate (taxable) {
 }
 
 function marginalRate (taxable) {
-  if (taxMode.value === 'none') return 0
+  if (!sections.value.tax) return 0
   if (taxMode.value === 'flat') return flatRate.value || 0
   if (taxMode.value === 'payslip') return payslipMarginal.value || 0
   return bandRate(taxable)
 }
 
-/** Full monthly breakdown for a given monthly gross. */
-function breakdown (monthlyGross) {
-  const gross = Math.max(0, monthlyGross || 0)
-  const preTax = Math.max(0, preTaxDeduction.value || 0)
-  const relief = Math.max(0, (dependents.value || 0) * (dependentRelief.value || 0))
-  const taxable = Math.max(0, gross - preTax - relief)
+/** Splits a monthly base salary into base + overtime + allowance. */
+function grossFor (monthlyBase) {
+  const base = Math.max(0, monthlyBase || 0)
+  const hourly = (hoursPerMonth.value || 0) > 0 ? base / hoursPerMonth.value : 0
+  if (!sections.value.overtime) return { base, hourly, ot: 0, allowance: 0, total: base }
+  const count = Math.max(0, otHours.value || 0)
+  // A flat price per OT is exactly that — flat. It does not move with the
+  // base salary, so unlike rate-based OT a raise never lifts it.
+  const ot = otMode.value === 'amount'
+    ? count * Math.max(0, otUnitAmount.value || 0)
+    : count * hourly * Math.max(0, otMultiplier.value || 0)
+  const allowance = Math.max(0, allowanceAmount.value || 0)
+  return { base, hourly, ot, allowance, total: base + ot + allowance }
+}
+
+/** Full monthly breakdown for a given monthly *base* salary. */
+function breakdown (monthlyBase) {
+  const { base, hourly, ot, allowance, total } = grossFor(monthlyBase)
+  const on = sections.value
+  const preTax = on.deductions ? Math.max(0, preTaxDeduction.value || 0) : 0
+  const relief = on.deductions ? Math.max(0, (dependents.value || 0) * (dependentRelief.value || 0)) : 0
+
+  // Exempt extras still reach take-home, they just never enter the tax base.
+  const taxedPay = extrasTaxable.value ? total : base
+  const taxable = Math.max(0, taxedPay - preTax - relief)
 
   let tax = 0
-  if (taxMode.value === 'flat') {
+  if (!on.tax) {
+    tax = 0
+  } else if (taxMode.value === 'flat') {
     tax = taxable * ((flatRate.value || 0) / 100)
   } else if (taxMode.value === 'brackets') {
     tax = progressiveTax(taxable)
@@ -137,27 +186,33 @@ function breakdown (monthlyGross) {
     // Anchor on the amount actually deducted, then tax only the change in
     // gross at the marginal rate — which is how a raise is really taxed.
     const anchor = Math.max(0, payslipTax.value || 0)
-    tax = Math.max(0, anchor + (gross - monthlyNow.value) * ((payslipMarginal.value || 0) / 100))
+    const baseline = grossFor(monthlyNow.value).total
+    tax = Math.max(0, anchor + (total - baseline) * ((payslipMarginal.value || 0) / 100))
   }
 
-  const postTax = Math.max(0, postTaxDeduction.value || 0)
-  const net = gross - preTax - tax - postTax
+  const postTax = on.deductions ? Math.max(0, postTaxDeduction.value || 0) : 0
+  const net = total - preTax - tax - postTax
 
   return {
-    gross,
+    base,
+    hourly,
+    ot,
+    allowance,
+    gross: total,
     preTax,
     relief,
     taxable,
     tax,
     postTax,
     net,
-    effRate: gross > 0 ? (tax / gross) * 100 : 0,
+    effRate: total > 0 ? (tax / total) * 100 : 0,
     marginal: marginalRate(taxable),
   }
 }
 
 const monthlyNow = computed(() => (period.value === 'year' ? (salary.value || 0) / 12 : (salary.value || 0)))
-const monthlyNext = computed(() => monthlyNow.value * (1 + (raisePct.value || 0) / 100))
+const activeRaise = computed(() => (sections.value.increase ? (raisePct.value || 0) : 0))
+const monthlyNext = computed(() => monthlyNow.value * (1 + activeRaise.value / 100))
 
 const before = computed(() => breakdown(monthlyNow.value))
 const after = computed(() => breakdown(monthlyNext.value))
@@ -165,6 +220,13 @@ const after = computed(() => breakdown(monthlyNext.value))
 /* Rates solved backwards from the amount on the payslip. */
 const payslipOnGross = computed(() => (before.value.gross > 0 ? ((payslipTax.value || 0) / before.value.gross) * 100 : 0))
 const payslipOnTaxable = computed(() => (before.value.taxable > 0 ? ((payslipTax.value || 0) / before.value.taxable) * 100 : 0))
+/* Each mode solves the other's number: a flat OT price implies a multiple of
+   your base hourly, and a multiplier implies a price per OT hour. */
+const otUnitPrice = computed(() => (otMode.value === 'amount'
+  ? Math.max(0, otUnitAmount.value || 0)
+  : before.value.hourly * Math.max(0, otMultiplier.value || 0)))
+const otImpliedMultiple = computed(() => (before.value.hourly > 0 ? otUnitPrice.value / before.value.hourly : 0))
+
 const suggestedMarginal = computed(() => bandRate(before.value.taxable))
 const bracketWouldPredict = computed(() => progressiveTax(before.value.taxable))
 
@@ -245,15 +307,22 @@ function signedMoney (value) {
 }
 
 const pct = value => `${(Math.round((value || 0) * 10) / 10).toFixed(1)}%`
+const mult = value => `${(Math.round((value || 0) * 100) / 100).toFixed(2)}×`
 const compact = value => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value || 0)
 
 const RAISE_CHIPS = [0, 3, 5, 7, 10, 15, 20, 30]
+const OT_UNITS = ['night', 'shift', 'day', 'hour']
+const otUnitPlural = computed(() => `${otUnit.value}s`)
+/** A flat OT price expressed as hours of base pay — the honest comparison. */
+const otHoursOfPay = computed(() => (before.value.hourly > 0 ? otUnitPrice.value / before.value.hourly : 0))
 
 /* --- persistence -------------------------------------------------- */
 const KEYS = {
   currency, period, salary, raisePct, taxMode, flatRate, brackets, presetName,
   payslipTax, payslipMarginal, khrPerUsd, dependents, dependentRelief,
   preTaxDeduction, postTaxDeduction, projectionYears,
+  otMode, otHours, otMultiplier, otUnitAmount, otUnit, hoursPerMonth, allowanceAmount,
+  extrasTaxable, sections,
 }
 
 let hydrated = false
@@ -271,6 +340,11 @@ onMounted(() => {
     /* corrupted or unavailable storage — fall through to defaults */
   }
   if (!Array.isArray(brackets.value) || !brackets.value.length) loadCambodiaPreset()
+  // 'none' used to be a tax mode; the section switch replaced it.
+  if (taxMode.value === 'none') {
+    taxMode.value = 'brackets'
+    sections.value.tax = false
+  }
   hydrated = true
 })
 
@@ -298,6 +372,8 @@ function switchCurrency (next) {
   scale(preTaxDeduction)
   scale(postTaxDeduction)
   scale(payslipTax)
+  scale(allowanceAmount)
+  scale(otUnitAmount)
   currency.value = next
   if (presetName.value.startsWith('Cambodia')) loadCambodiaPreset()
   else {
@@ -313,7 +389,7 @@ useHead({ title: 'Salary & Raise Calculator' })
 </script>
 
 <template>
-  <div class="pay-shell">
+  <div class="pay-shell" @input="sfx.typing($event)">
     <div class="pay-glow" aria-hidden="true" />
     <div class="pay-grain" aria-hidden="true" />
 
@@ -363,13 +439,25 @@ useHead({ title: 'Salary & Raise Calculator' })
       <!-- CONTROLS + PAYSLIP -->
       <section class="work">
         <div class="controls">
+          <div class="io-key" aria-hidden="true">
+            <span class="io-in">You fill this in</span>
+            <span class="io-out">Worked out for you</span>
+          </div>
+
+          <section class="group">
+            <div class="group-head">
+              <span>A</span>
+              <h3>What you earn</h3>
+              <em>{{ money(after.gross) }} / mo</em>
+            </div>
+
           <!-- salary -->
           <article class="panel" style="--delay: 0ms">
             <div class="panel-head">
               <h2>01 — Current salary</h2>
               <div class="seg">
-                <button :class="{ on: currency === 'USD' }" @click="switchCurrency('USD')">USD</button>
-                <button :class="{ on: currency === 'KHR' }" @click="switchCurrency('KHR')">KHR</button>
+                <button :class="{ on: currency === 'USD' }" @click="pickCurrency('USD')">USD</button>
+                <button :class="{ on: currency === 'KHR' }" @click="pickCurrency('KHR')">KHR</button>
               </div>
             </div>
 
@@ -382,8 +470,8 @@ useHead({ title: 'Salary & Raise Calculator' })
                 </div>
               </label>
               <div class="seg tall">
-                <button :class="{ on: period === 'month' }" @click="period = 'month'">/ month</button>
-                <button :class="{ on: period === 'year' }" @click="period = 'year'">/ year</button>
+                <button :class="{ on: period === 'month' }" @click="period !== 'month' && sfx.play('select'); period = 'month'">/ month</button>
+                <button :class="{ on: period === 'year' }" @click="period !== 'year' && sfx.play('select'); period = 'year'">/ year</button>
               </div>
             </div>
 
@@ -393,18 +481,133 @@ useHead({ title: 'Salary & Raise Calculator' })
           </article>
 
           <!-- raise -->
-          <article class="panel" style="--delay: 70ms">
+          <article class="panel" :class="{ 'is-off': !sections.overtime }" style="--delay: 70ms">
             <div class="panel-head">
-              <h2>02 — Increase</h2>
-              <span class="panel-note">{{ pct(raisePct) }}</span>
+              <div class="panel-title">
+                <button
+                  class="switch"
+                  :class="{ on: sections.overtime }"
+                  :aria-pressed="sections.overtime"
+                  aria-label="Toggle this section"
+                  @click="sections.overtime = !sections.overtime; sfxSection(sections.overtime)"
+                ><i /></button>
+                <h2>02 — Overtime &amp; benefits</h2>
+              </div>
+              <div v-if="sections.overtime" class="seg">
+                <button :class="{ on: extrasTaxable }" @click="extrasTaxable !== true && sfx.play('select'); extrasTaxable = true">Taxable</button>
+                <button :class="{ on: !extrasTaxable }" @click="extrasTaxable !== false && sfx.play('select'); extrasTaxable = false">Exempt</button>
+              </div>
             </div>
+
+            <template v-if="sections.overtime">
+
+            <div class="seg block">
+              <button :class="{ on: otMode === 'rate' }" @click="otMode !== 'rate' && sfx.play('select'); otMode = 'rate'">Hourly × multiplier</button>
+              <button :class="{ on: otMode === 'amount' }" @click="otMode !== 'amount' && sfx.play('select'); otMode = 'amount'">Flat amount per OT</button>
+            </div>
+
+            <div class="field-row split">
+              <label class="field">
+                <span>{{ otMode === 'amount' ? otUnitPlural + ' worked / month' : 'Paid OT hours / month' }}</span>
+                <div class="amount">
+                  <input v-model.number="otHours" type="number" min="0" step="0.5" inputmode="decimal">
+                  <i class="trail">{{ otMode === 'amount' ? '×' : 'h' }}</i>
+                </div>
+              </label>
+
+              <label v-if="otMode === 'amount'" class="field">
+                <span>Paid per {{ otUnit }}</span>
+                <div class="amount">
+                  <i>{{ symbol }}</i>
+                  <input v-model.number="otUnitAmount" type="number" min="0" step="any" inputmode="decimal">
+                </div>
+              </label>
+              <label v-else class="field">
+                <span>OT rate multiplier</span>
+                <div class="amount">
+                  <input v-model.number="otMultiplier" type="number" min="0" step="0.1" inputmode="decimal">
+                  <i class="trail">×</i>
+                </div>
+              </label>
+            </div>
+
+            <div v-if="otMode === 'amount'" class="chips slim">
+              <button
+                v-for="unit in OT_UNITS"
+                :key="unit"
+                :class="{ on: otUnit === unit }"
+                @click="otUnit !== unit && sfx.play('select'); otUnit = unit"
+              >per {{ unit }}</button>
+            </div>
+
+            <div v-if="otMode === 'rate'" class="chips slim">
+              <button :class="{ on: Number(otMultiplier) === 1.5 }" @click="otMultiplier !== 1.5 && sfx.play('select'); otMultiplier = 1.5">1.5× normal</button>
+              <button :class="{ on: Number(otMultiplier) === 2 }" @click="otMultiplier !== 2 && sfx.play('select'); otMultiplier = 2">2× night / holiday</button>
+            </div>
+
+            <div class="field-row split">
+              <label class="field">
+                <span>Base hours / month</span>
+                <div class="amount">
+                  <input v-model.number="hoursPerMonth" type="number" min="1" step="1">
+                  <i class="trail">h</i>
+                </div>
+              </label>
+              <label class="field">
+                <span>Other monthly benefit</span>
+                <div class="amount">
+                  <i>{{ symbol }}</i>
+                  <input v-model.number="allowanceAmount" type="number" min="0" step="any" inputmode="decimal">
+                </div>
+              </label>
+            </div>
+
+            <p class="readout">
+              <span>Base hourly</span><b>{{ money(before.hourly) }}</b>
+              <span>{{ otMode === 'amount' ? 'One ' + otUnit + ' is worth' : 'Per OT hour' }}</span>
+              <b>{{ otMode === 'amount' ? (Math.round(otHoursOfPay * 10) / 10).toFixed(1) + ' h of base pay' : money(otUnitPrice) }}</b>
+              <span>OT pay</span><b>{{ money(before.ot) }}</b>
+              <span>After the raise</span><b>{{ money(after.ot) }}</b>
+            </p>
+
+            <p v-if="otMode === 'amount'" class="hint">
+              A flat price per OT does not move when your base salary does, so the
+              raise lifts base pay only — your {{ money(before.ot) }} of overtime stays
+              put. At {{ money(otUnitAmount) }} each, one OT is worth
+              {{ mult(otImpliedMultiple) }} your current base hourly rate, and that multiple shrinks as your salary climbs.
+            </p>
+            <p v-else class="hint">
+              OT is priced off your base salary, so the raise lifts it too —
+              {{ signedMoney(after.ot - before.ot) }} a month on overtime alone.
+              Cambodian labour law sets OT at 1.5× normal hours and 2× for night,
+              rest-day or holiday work.
+            </p>
+            </template>
+          </article>
+
+          <article class="panel" :class="{ 'is-off': !sections.increase }" style="--delay: 140ms">
+            <div class="panel-head">
+              <div class="panel-title">
+                <button
+                  class="switch"
+                  :class="{ on: sections.increase }"
+                  :aria-pressed="sections.increase"
+                  aria-label="Toggle this section"
+                  @click="sections.increase = !sections.increase; sfxSection(sections.increase)"
+                ><i /></button>
+                <h2>03 — Increase</h2>
+              </div>
+              <span v-if="sections.increase" class="panel-note">{{ pct(raisePct) }}</span>
+            </div>
+
+            <template v-if="sections.increase">
 
             <div class="chips">
               <button
                 v-for="chip in RAISE_CHIPS"
                 :key="chip"
                 :class="{ on: Number(raisePct) === chip }"
-                @click="raisePct = chip"
+                @click="raisePct !== chip && sfx.play('select'); raisePct = chip"
               >{{ chip }}%</button>
             </div>
 
@@ -416,6 +619,7 @@ useHead({ title: 'Salary & Raise Calculator' })
               max="50"
               step="0.5"
               aria-label="Raise percentage"
+              @input="sfx.throttled('snap', 110, { volume: 0.4 })"
             >
 
             <div class="field-row split">
@@ -445,19 +649,38 @@ useHead({ title: 'Salary & Raise Calculator' })
                 <em class="field-echo">needs {{ raisePct >= 0 ? '+' : '' }}{{ pct(raisePct) }}</em>
               </label>
             </div>
+            </template>
           </article>
+          </section>
+
+          <section class="group">
+            <div class="group-head">
+              <span>B</span>
+              <h3>What comes off</h3>
+              <em>{{ money(after.tax + after.preTax + after.postTax) }} / mo</em>
+            </div>
 
           <!-- tax -->
-          <article class="panel" style="--delay: 140ms">
+          <article class="panel" :class="{ 'is-off': !sections.tax }" style="--delay: 210ms">
             <div class="panel-head">
-              <h2>03 — Tax</h2>
-              <div class="seg">
-                <button :class="{ on: taxMode === 'brackets' }" @click="taxMode = 'brackets'">Brackets</button>
-                <button :class="{ on: taxMode === 'flat' }" @click="taxMode = 'flat'">Flat</button>
-                <button :class="{ on: taxMode === 'payslip' }" @click="taxMode = 'payslip'">Payslip</button>
-                <button :class="{ on: taxMode === 'none' }" @click="taxMode = 'none'">None</button>
+              <div class="panel-title">
+                <button
+                  class="switch"
+                  :class="{ on: sections.tax }"
+                  :aria-pressed="sections.tax"
+                  aria-label="Toggle this section"
+                  @click="sections.tax = !sections.tax; sfxSection(sections.tax)"
+                ><i /></button>
+                <h2>04 — Tax</h2>
+              </div>
+              <div v-if="sections.tax" class="seg">
+                <button :class="{ on: taxMode === 'brackets' }" @click="taxMode !== 'brackets' && sfx.play('select'); taxMode = 'brackets'">Brackets</button>
+                <button :class="{ on: taxMode === 'flat' }" @click="taxMode !== 'flat' && sfx.play('select'); taxMode = 'flat'">Flat</button>
+                <button :class="{ on: taxMode === 'payslip' }" @click="taxMode !== 'payslip' && sfx.play('select'); taxMode = 'payslip'">Payslip</button>
               </div>
             </div>
+
+            <template v-if="sections.tax">
 
             <template v-if="taxMode === 'flat'">
               <label class="field">
@@ -471,8 +694,8 @@ useHead({ title: 'Salary & Raise Calculator' })
 
             <template v-else-if="taxMode === 'brackets'">
               <div class="preset-row">
-                <button class="ghost" @click="loadCambodiaPreset">Load Cambodia ToS</button>
-                <button class="ghost" @click="loadFlatPreset">Reset to single band</button>
+                <button class="ghost" @click="loadCambodiaPreset(); sfx.play('success')">Load Cambodia ToS</button>
+                <button class="ghost" @click="loadFlatPreset(); sfx.play('success')">Reset to single band</button>
               </div>
 
               <div v-if="currency === 'USD'" class="rate-line">
@@ -505,13 +728,13 @@ useHead({ title: 'Salary & Raise Calculator' })
                       </div>
                     </td>
                     <td class="shrink">
-                      <button class="icon" title="Remove band" @click="removeBracket(index)">×</button>
+                      <button class="icon" title="Remove band" @click="removeBracket(index); sfx.play('delete')">×</button>
                     </td>
                   </tr>
                 </tbody>
               </table>
 
-              <button class="ghost wide" @click="addBracket">+ Add band</button>
+              <button class="ghost wide" @click="addBracket(); sfx.play('select')">+ Add band</button>
             </template>
 
             <template v-else-if="taxMode === 'payslip'">
@@ -535,10 +758,10 @@ useHead({ title: 'Salary & Raise Calculator' })
                   </div>
                 </label>
                 <div class="solve">
-                  <button class="ghost" @click="payslipMarginal = suggestedMarginal">
+                  <button class="ghost" @click="payslipMarginal = suggestedMarginal; sfx.play('success')">
                     Use band rate · {{ pct(suggestedMarginal) }}
                   </button>
-                  <button class="ghost" @click="payslipMarginal = payslipOnTaxable">
+                  <button class="ghost" @click="payslipMarginal = payslipOnTaxable; sfx.play('success')">
                     Keep effective · {{ pct(payslipOnTaxable) }}
                   </button>
                 </div>
@@ -561,15 +784,26 @@ useHead({ title: 'Salary & Raise Calculator' })
               </p>
             </template>
 
-            <p v-else class="hint">No tax applied — this is the pure gross view.</p>
+            </template>
           </article>
 
           <!-- deductions -->
-          <article class="panel" style="--delay: 210ms">
+          <article class="panel" :class="{ 'is-off': !sections.deductions }" style="--delay: 280ms">
             <div class="panel-head">
-              <h2>04 — Relief &amp; deductions</h2>
-              <span class="panel-note">per month</span>
+              <div class="panel-title">
+                <button
+                  class="switch"
+                  :class="{ on: sections.deductions }"
+                  :aria-pressed="sections.deductions"
+                  aria-label="Toggle this section"
+                  @click="sections.deductions = !sections.deductions; sfxSection(sections.deductions)"
+                ><i /></button>
+                <h2>05 — Relief &amp; deductions</h2>
+              </div>
+              <span v-if="sections.deductions" class="panel-note">per month</span>
             </div>
+
+            <template v-if="sections.deductions">
 
             <div class="field-row split">
               <label class="field">
@@ -608,7 +842,9 @@ useHead({ title: 'Salary & Raise Calculator' })
               Pre-tax items (pension, social security) shrink the taxable base.
               Post-tax items (loans, insurance) only shrink take-home.
             </p>
+            </template>
           </article>
+          </section>
         </div>
 
         <!-- PAYSLIP -->
@@ -618,7 +854,7 @@ useHead({ title: 'Salary & Raise Calculator' })
               <div class="slip-head">
                 <div>
                   <p class="slip-title">Pay statement</p>
-                  <p class="slip-sub">Monthly · {{ currency }}</p>
+                  <p class="slip-sub">Monthly · {{ currency }} <em class="io-badge">worked out</em></p>
                 </div>
                 <div class="slip-stamp">{{ pct(raisePct) }}</div>
               </div>
@@ -631,7 +867,22 @@ useHead({ title: 'Salary & Raise Calculator' })
                 <span>After</span>
               </div>
 
-              <div class="slip-row">
+              <div class="slip-row" :class="{ muted: before.ot > 0 || before.allowance > 0 }">
+                <span>{{ before.ot > 0 || before.allowance > 0 ? 'Base salary' : 'Gross' }}</span>
+                <b>{{ money(before.base) }}</b>
+                <b>{{ money(after.base) }}</b>
+              </div>
+              <div v-if="before.ot > 0 || after.ot > 0" class="slip-row muted">
+                <span>Overtime · {{ otHours }}{{ otMode === 'amount' ? ' ' + otUnitPlural + ' × ' + money(otUnitAmount) : 'h @ ' + otMultiplier + '×' }}</span>
+                <b>{{ money(before.ot) }}</b>
+                <b>{{ money(after.ot) }}</b>
+              </div>
+              <div v-if="before.allowance > 0" class="slip-row muted">
+                <span>Benefit</span>
+                <b>{{ money(before.allowance) }}</b>
+                <b>{{ money(after.allowance) }}</b>
+              </div>
+              <div v-if="before.ot > 0 || before.allowance > 0" class="slip-row">
                 <span>Gross</span>
                 <b>{{ money(before.gross) }}</b>
                 <b>{{ money(after.gross) }}</b>
@@ -703,15 +954,34 @@ useHead({ title: 'Salary & Raise Calculator' })
       </section>
 
       <!-- PROJECTION -->
-      <section class="projection">
+      <section class="projection" :class="{ 'is-off': !sections.projection }">
         <div class="section-head">
-          <h2>05 — If this repeats every year</h2>
-          <div class="years">
+          <div class="panel-title">
+            <button
+              class="switch"
+              :class="{ on: sections.projection }"
+              :aria-pressed="sections.projection"
+              aria-label="Toggle this section"
+              @click="sections.projection = !sections.projection; sfxSection(sections.projection)"
+            ><i /></button>
+            <h2>06 — If this repeats every year <em v-if="sections.projection" class="io-badge">worked out</em></h2>
+          </div>
+          <div v-if="sections.projection" class="years">
             <span>Horizon</span>
-            <input v-model.number="projectionYears" type="range" min="1" max="10" step="1" class="slider slim">
+            <input
+              v-model.number="projectionYears"
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              class="slider slim"
+              @input="sfx.throttled('snap', 110, { volume: 0.4 })"
+            >
             <b>{{ projectionYears }} yr</b>
           </div>
         </div>
+
+        <template v-if="sections.projection">
 
         <div class="proj-scroll">
           <table class="proj">
@@ -763,6 +1033,7 @@ useHead({ title: 'Salary & Raise Calculator' })
             against the current Prakas before relying on them.
           </template>
         </p>
+        </template>
       </section>
     </main>
   </div>
@@ -1000,16 +1271,62 @@ useHead({ title: 'Salary & Raise Calculator' })
   border-bottom: 1px solid var(--rule);
 }
 
-.controls { display: flex; flex-direction: column; gap: 2px; }
+.controls { display: flex; flex-direction: column; gap: 38px; }
 
-.panel {
-  padding: 26px 0 30px;
-  border-top: 1px solid var(--rule);
-  animation: rise 0.7s both;
-  animation-delay: var(--delay, 0ms);
+/* Two named groups give the column a rhythm: money in, then money out. */
+.group { display: flex; flex-direction: column; gap: 10px; }
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--ink);
 }
 
-.panel:first-child { border-top: 0; padding-top: 0; }
+.group-head span {
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+  font-family: 'Instrument Serif', serif;
+  font-size: 13px;
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: 50%;
+}
+
+.group-head h3 {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.group-head em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* Each step is a discrete card on the sheet rather than a hairline-separated
+   block, so the eye can find where one ends and the next begins. */
+.panel {
+  padding: 22px 22px 25px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  animation: rise 0.7s both;
+  animation-delay: var(--delay, 0ms);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.panel:focus-within { background: rgba(255, 255, 255, 0.72); border-color: var(--rule-2); }
 
 .panel-head {
   display: flex;
@@ -1034,6 +1351,41 @@ useHead({ title: 'Salary & Raise Calculator' })
   color: var(--sand);
 }
 
+.panel-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.panel.is-off { padding-bottom: 20px; background: transparent; }
+.projection.is-off { padding-bottom: 0; }
+.panel.is-off h2, .projection.is-off h2 { color: var(--muted); }
+.section-head .panel-title h2 { font-size: 10px; }
+
+/* Section on/off switch */
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 17px;
+  padding: 0;
+  background: rgba(28, 31, 23, 0.09);
+  border: 1px solid var(--rule-2);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.switch i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s;
+}
+
+.switch:hover { border-color: var(--ink); }
+.switch.on { background: rgba(122, 94, 13, 0.2); border-color: var(--sand); }
+.switch.on i { transform: translateX(15px); background: var(--sand); }
+
 /* segmented toggles */
 .seg { display: flex; flex-wrap: wrap; border: 1px solid var(--rule-2); }
 
@@ -1055,6 +1407,8 @@ useHead({ title: 'Salary & Raise Calculator' })
 .seg button:hover { color: var(--ink); }
 .seg button.on { color: var(--ground); background: var(--ink); }
 .seg.tall button { padding: 12px 15px; }
+.seg.block { width: 100%; margin-bottom: 22px; }
+.seg.block button { flex: 1; padding: 10px 12px; text-align: center; }
 
 /* fields */
 .field-row { display: flex; align-items: flex-end; gap: 16px; }
@@ -1064,6 +1418,7 @@ useHead({ title: 'Salary & Raise Calculator' })
 
 .field > span {
   display: block;
+  padding-left: 9px;
   margin-bottom: 9px;
   font-size: 9px;
   letter-spacing: 0.13em;
@@ -1071,16 +1426,25 @@ useHead({ title: 'Salary & Raise Calculator' })
   color: var(--muted);
 }
 
+/* Editable: a tinted well with a weighted bottom rule. Every field you can
+   type into looks like this, and nothing else on the page does. */
 .amount {
   display: flex;
   align-items: baseline;
   gap: 7px;
-  padding-bottom: 7px;
-  border-bottom: 1px solid var(--rule-2);
-  transition: border-color 0.2s;
+  padding: 6px 9px 5px;
+  background: rgba(28, 31, 23, 0.05);
+  border-bottom: 1.5px solid var(--rule-2);
+  border-radius: 2px 2px 0 0;
+  transition: background 0.18s, border-color 0.2s;
 }
 
-.amount:focus-within { border-color: var(--sand); }
+.amount:hover { background: rgba(28, 31, 23, 0.08); }
+
+.amount:focus-within {
+  background: rgba(122, 94, 13, 0.1);
+  border-color: var(--sand);
+}
 .amount i { font-style: normal; font-size: 15px; color: var(--muted); }
 .amount i.trail { margin-left: auto; }
 
@@ -1099,16 +1463,19 @@ useHead({ title: 'Salary & Raise Calculator' })
 }
 
 .amount.slim input { font-size: 14px; }
-.amount.slim { padding-bottom: 4px; }
+.amount.slim { padding: 4px 7px 3px; }
 .amount.right input { text-align: right; }
 
 .amount input::-webkit-outer-spin-button,
 .amount input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .amount input[type='number'] { -moz-appearance: textfield; }
 
+/* Calculated: hatched ground and a gold left rule. Never editable. */
 .field-echo {
   display: block;
   margin-top: 8px;
+  padding-left: 7px;
+  border-left: 2px solid var(--sand);
   font-size: 10px;
   font-style: normal;
   letter-spacing: 0.09em;
@@ -1116,17 +1483,74 @@ useHead({ title: 'Salary & Raise Calculator' })
   color: var(--sand);
 }
 
-.hint {
-  margin-top: 16px;
-  font-size: 11px;
-  line-height: 1.7;
+.readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 20px;
+  margin-top: 22px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--sand);
+  background: repeating-linear-gradient(135deg, rgba(28, 31, 23, 0.05) 0 5px, transparent 5px 11px);
+}
+
+.readout span {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-.hint.compare {
-  padding-top: 13px;
-  border-top: 1px dotted var(--rule-2);
+.readout b { margin-right: 10px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* Legend tying the two treatments together. */
+.io-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-bottom: 30px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
+
+.io-key span { display: flex; align-items: center; gap: 8px; }
+.io-key span::before { content: ''; width: 20px; height: 13px; flex-shrink: 0; }
+
+.io-in::before {
+  background: rgba(28, 31, 23, 0.05);
+  border-bottom: 1.5px solid var(--rule-2);
+  border-radius: 2px 2px 0 0;
+}
+
+.io-out::before {
+  border-left: 2px solid var(--sand);
+  background: repeating-linear-gradient(135deg, rgba(28, 31, 23, 0.09) 0 4px, transparent 4px 9px);
+}
+
+.io-badge {
+  margin-left: 8px;
+  padding: 3px 7px;
+  font-size: 8px;
+  font-style: normal;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted);
+  border: 1px dashed var(--rule-2);
+}
+
+.hint {
+  margin-top: 18px;
+  padding-left: 11px;
+  border-left: 1px solid var(--rule-2);
+  font-size: 11px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+.hint.compare { margin-top: 13px; }
 
 .hint.compare b { font-weight: 500; color: var(--ink); }
 
@@ -1135,6 +1559,8 @@ useHead({ title: 'Salary & Raise Calculator' })
 
 /* chips */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+.chips.slim { margin: 14px 0 4px; }
+.chips.slim button { padding: 6px 11px; font-size: 10px; }
 
 .chips button {
   padding: 8px 14px;
@@ -1219,8 +1645,9 @@ useHead({ title: 'Salary & Raise Calculator' })
 }
 
 .rate-line input {
-  width: 66px;
-  padding: 3px 0;
+  width: 72px;
+  padding: 3px 6px;
+  background: rgba(28, 31, 23, 0.05);
   font: inherit;
   font-size: 11px;
   font-variant-numeric: tabular-nums;

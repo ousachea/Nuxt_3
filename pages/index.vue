@@ -1,4 +1,7 @@
 <script setup>
+// Self-contained full-bleed shell: no site nav/footer chrome.
+definePageMeta({ layout: false })
+
 const pageFiles = import.meta.glob('~/pages/**/*.vue')
 
 const pageDetails = {
@@ -7,6 +10,7 @@ const pageDetails = {
   '/exchange': { eyebrow: 'Currency', description: 'Convert between US dollars and Cambodian riel in seconds.', tone: 'coral', symbol: '៛' },
   '/phone': { eyebrow: 'Utility', description: 'A focused mobile workspace, designed for the small screen.', tone: 'violet', symbol: '⌁' },
   '/salary': { eyebrow: 'Income', description: 'Model a pay rise and see what survives the tax bands.', tone: 'teal', symbol: '%' },
+  '/sound': { eyebrow: 'Preferences', description: 'Pick a sound pack and audition every interface cue.', tone: 'slate', symbol: '♪' },
   '/setup': { eyebrow: 'System', description: 'Get a new workstation configured and ready to build.', tone: 'green', symbol: '⌘' },
   '/idol': { eyebrow: 'Culture', description: 'Browse artists, profiles and the people inspiring the moment.', tone: 'pink', symbol: '★' },
   '/js': { eyebrow: 'Code', description: 'A focused JavaScript workspace for experimenting and building.', tone: 'lime', symbol: 'JS' },
@@ -49,11 +53,25 @@ const updateTime = () => {
   }).format(new Date())
 }
 
+const sfx = useSfx()
+
+// Auto-imported components are resolved at compile time for template *tags*
+// only — they are neither script bindings nor resolvable from a plain string in
+// `:is`. Without this the workspace grid rendered as empty comment nodes.
+const NuxtLinkComponent = resolveComponent('NuxtLink')
+
 const scrollToWorkspaces = () => {
+  sfx.play('expand')
   document.getElementById('workspaces')?.scrollIntoView({
     behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     block: 'start',
   })
+}
+
+/** This index is a launcher, so opening a workspace is its one real outcome. */
+const openWorkspace = (page) => {
+  if (page.isDynamic) return sfx.play('blocked')
+  sfx.play('open')
 }
 
 onMounted(() => {
@@ -98,6 +116,8 @@ useHead({ title: 'Ousa — Personal Tools' })
               v-for="page in pages"
               :key="`quick-${page.path}`"
               :to="page.path"
+              @click="sfx.play('open')"
+              @pointerenter="sfx.throttled('hover', 260)"
             >
               {{ page.label }} <span aria-hidden="true">↗</span>
             </NuxtLink>
@@ -123,13 +143,15 @@ useHead({ title: 'Ousa — Personal Tools' })
 
         <div class="workspace-grid">
           <component
-            :is="page.isDynamic ? 'article' : NuxtLink"
+            :is="page.isDynamic ? 'article' : NuxtLinkComponent"
             v-for="(page, index) in pages"
             :key="page.path"
             :to="page.isDynamic ? undefined : page.path"
             class="workspace-card"
             :class="[`tone-${page.tone}`, { disabled: page.isDynamic }]"
             :style="{ '--delay': `${index * 70}ms` }"
+            @click="openWorkspace(page)"
+            @pointerenter="sfx.throttled('hover', 260)"
           >
             <div class="card-topline">
               <span>{{ page.eyebrow }}</span>
@@ -254,6 +276,7 @@ useHead({ title: 'Ousa — Personal Tools' })
 .tone-pink { background: #e6a5b9; }
 .tone-lime { background: #c7d86b; }
 .tone-teal { background: #8ac9bb; }
+.tone-slate { background: #a8adbb; }
 .disabled { opacity: .55; pointer-events: none; }
 
 .home-footer { display: flex; align-items: center; gap: 20px; height: 94px; padding: 0 clamp(24px, 5vw, 76px); border-top: 1px solid var(--line); }

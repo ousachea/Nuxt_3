@@ -7,7 +7,7 @@ import { parentPort, threadId } from 'node:worker_threads';
 import { escapeHtml } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/@vue+shared@3.5.35/node_modules/@vue/shared/dist/shared.cjs.js';
 import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/vue-bundle-renderer@2.2.0/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/ufo@1.6.4/node_modules/ufo/dist/index.mjs';
-import { renderToString } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/vue@3.5.35/node_modules/vue/server-renderer/index.mjs';
+import { renderToString } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/vue@3.5.35_typescript@5.9.3/node_modules/vue/server-renderer/index.mjs';
 import destr, { destr as destr$1 } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
 import { createHooks } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
 import { createFetch, Headers as Headers$1 } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
@@ -28,8 +28,8 @@ import { SourceMapConsumer } from 'file:///Users/ousa/Desktop/Nuxt_3/node_module
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { stringify, uneval } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/devalue@5.8.1/node_modules/devalue/index.js';
 import { captureRawStackTrace, parseRawStackTrace } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/errx@0.1.0/node_modules/errx/dist/index.js';
-import { isVNode, isRef, toValue } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/vue@3.5.35/node_modules/vue/index.mjs';
-import _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/@nuxt+vite-builder@3.21.2_@types+node@25.9.1_magicast@0.5.3_nuxt@3.21.2_@emnapi+core@1._98a5f9c21245805e0fa8780fc0eed816/node_modules/@nuxt/vite-builder/dist/fix-stacktrace.mjs';
+import { isVNode, isRef, toValue } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/vue@3.5.35_typescript@5.9.3/node_modules/vue/index.mjs';
+import _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/@nuxt+vite-builder@3.21.2_@types+node@25.9.1_magicast@0.5.3_nuxt@3.21.2_@emnapi+core@1._ab085e386946fed1a8d54368e44519d0/node_modules/@nuxt/vite-builder/dist/fix-stacktrace.mjs';
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file:///Users/ousa/Desktop/Nuxt_3/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
@@ -2061,7 +2061,7 @@ const asyncContext = getContext("nuxt-dev", {
 	asyncContext: true,
 	AsyncLocalStorage
 });
-const _OS3E4sbglIfuEV71mYusLKEdnQOW3IT0SM7rTUNYo = (nitroApp) => {
+const _MEYcjnaexWCafHle_huz7lP89I2rfB0CFWjUqG_PsrQ = (nitroApp) => {
 	const handler = nitroApp.h3App.handler;
 	nitroApp.h3App.handler = (event) => {
 		return asyncContext.callAsync({
@@ -2135,7 +2135,7 @@ function onConsoleLog(callback) {
 }
 
 const plugins = [
-  _OS3E4sbglIfuEV71mYusLKEdnQOW3IT0SM7rTUNYo,
+  _MEYcjnaexWCafHle_huz7lP89I2rfB0CFWjUqG_PsrQ,
 _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw
 ];
 
@@ -2602,16 +2602,16 @@ async function getIslandContext(event) {
 const _lazy_9g3x2D = () => Promise.resolve().then(function () { return downloadTest_get$1; });
 const _lazy_5WTFwa = () => Promise.resolve().then(function () { return ping_get$1; });
 const _lazy_LF6T1U = () => Promise.resolve().then(function () { return uploadTest_post$1; });
-const _lazy_iDxLey = () => Promise.resolve().then(function () { return renderer; });
+const _lazy_RmzyTW = () => Promise.resolve().then(function () { return renderer; });
 
 const handlers = [
   { route: '', handler: _RJw9ni, lazy: false, middleware: true, method: undefined },
   { route: '/api/download-test', handler: _lazy_9g3x2D, lazy: true, middleware: false, method: "get" },
   { route: '/api/ping', handler: _lazy_5WTFwa, lazy: true, middleware: false, method: "get" },
   { route: '/api/upload-test', handler: _lazy_LF6T1U, lazy: true, middleware: false, method: "post" },
-  { route: '/__nuxt_error', handler: _lazy_iDxLey, lazy: true, middleware: false, method: undefined },
+  { route: '/__nuxt_error', handler: _lazy_RmzyTW, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: handler$1, lazy: false, middleware: false, method: undefined },
-  { route: '/**', handler: _lazy_iDxLey, lazy: true, middleware: false, method: undefined }
+  { route: '/**', handler: _lazy_RmzyTW, lazy: true, middleware: false, method: undefined }
 ];
 
 function createNitroApp() {

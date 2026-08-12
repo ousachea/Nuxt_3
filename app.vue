@@ -1,7 +1,11 @@
 <template>
-  <main>
+  <!-- NuxtLayout is what makes layouts/ apply at all. Without it the pages
+       written against the default layout (.page, .section-label, .divider and
+       the :root tokens) render unstyled. Pages with their own full-bleed shell
+       opt out with definePageMeta({ layout: false }). -->
+  <NuxtLayout>
     <NuxtPage />
-  </main>
+  </NuxtLayout>
 </template>
 
 <script>

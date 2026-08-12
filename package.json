@@ -7,7 +7,9 @@
 		"dev": "nuxt dev",
 		"generate": "nuxt generate",
 		"preview": "nuxt preview",
-		"postinstall": "nuxt prepare"
+		"postinstall": "nuxt prepare",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"dependencies": {
 		"@nuxtjs/tailwindcss": "^6.14.0",
@@ -32,6 +34,9 @@
 	"devDependencies": {
 		"@vite-pwa/nuxt": "^1.1.1",
 		"jsrepo": "^3.7.0",
-		"playwright": "^1.60.0"
+		"playwright": "^1.60.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.1.10",
+		"vue-tsc": "^3.3.9"
 	}
 }

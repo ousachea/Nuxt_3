@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
+
+const sfx = useSfx();
 
 const buyRate = ref(4050);
 const sellRate = ref(4080);
@@ -20,6 +22,17 @@ const profit = computed(() => {
   return (currentBuyRate.value - boughtRate.value) * investmentUSD.value;
 });
 
+// This page has no buttons — the numbers are the whole interface. The one
+// state change worth a cue is the position crossing break-even, which is easy
+// to miss while typing. Only the crossing fires, never every keystroke.
+watch(
+  () => profit.value >= 0,
+  (inProfit, wasInProfit) => {
+    if (wasInProfit === undefined) return;
+    sfx.play(inProfit ? "success" : "error");
+  },
+);
+
 function formatKHR(value: number) {
   return (
     new Intl.NumberFormat("en-US").format(Math.round(value)) +
@@ -39,7 +52,7 @@ function formatUSD(value: number) {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" @input="sfx.typing($event)">
     <h1>USD ⇄ KHR Exchange Calculator</h1>
 
     <div class="grid">
