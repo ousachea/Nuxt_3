@@ -4,7 +4,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "nuxt build",
-		"dev": "nuxt dev",
+		"dev": "airship --exec \"npm run dev:plain\" --target 4000 --open",
+		"dev:plain": "nuxt dev",
 		"generate": "nuxt generate",
 		"preview": "nuxt preview",
 		"postinstall": "nuxt prepare",
@@ -32,6 +33,7 @@
 		"vue3-apexcharts": "^1.11.1"
 	},
 	"devDependencies": {
+		"@airshiplabs/cli": "^0.2.5",
 		"@vite-pwa/nuxt": "^1.1.1",
 		"jsrepo": "^3.7.0",
 		"playwright": "^1.60.0",

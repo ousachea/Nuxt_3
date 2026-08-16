@@ -86,10 +86,7 @@
                         :aria-label="showKHR ? 'Switch to USD' : 'Switch to KHR'">
                         {{ showKHR ? 'USD' : '៛' }}
                     </button>
-                    <button class="ctrl-btn lock-nav-btn" @click="openPwModal"
-                        :aria-label="isOwner ? 'Owner active' : 'Unlock owner view'">
-                        {{ isOwner ? '🔓' : '🔒' }}
-                    </button>
+                    <!-- Owner unlock lives with the ledger it unlocks (#purchases-section). -->
                 </div>
             </div>
             <div v-if="!isOnline" class="offline-bar" role="alert">
@@ -264,19 +261,7 @@
                             <p class="spot-disclaimer">Spot-metal estimate only. Local dealer premiums, purity, workmanship and buy/sell spread are not included.</p>
                         </div>
 
-                        <!-- Per-unit chips -->
-                        <div v-if="displayPrice" class="chips-grid" :class="{ 'units-collapsed': !showAllUnits }" :key="displayPrice">
-                            <div v-for="(u, idx) in allUnits" :key="u.key" class="chip chip-shimmer"
-                                :style="{ animationDelay: (idx * 0.08) + 's' }">
-                                <div class="shimmer-line"></div>
-                                <span class="chip-label">{{ t[u.key] || u.label }}</span>
-                                <span class="chip-price">${{ u.price < 1 ? u.price.toFixed(4) : u.price.toFixed(2)
-                                        }}</span>
-                            </div>
-                        </div>
-                        <button v-if="displayPrice" class="mobile-units-toggle" @click="showAllUnits = !showAllUnits">
-                            {{ showAllUnits ? 'Show essential units' : 'View all 6 units' }}
-                        </button>
+                        <!-- Per-unit prices live in the "Price by Unit" card (col-right) — not duplicated here. -->
 
                         <!-- Loading -->
                         <div v-if="loading" class="progress-bar">
@@ -432,7 +417,7 @@
                         v-bind="goldGlow">
                         <div class="section-header purchases-header">
                             <div class="purchases-heading-copy">
-                                <span class="section-kicker">Private ledger</span>
+                                <span class="section-kicker">Private ledger<template v-if="purchases.length"> · {{ purchases.length }} position{{ purchases.length === 1 ? '' : 's' }}</template></span>
                                 <h2 class="section-title">{{ t.myPurchases }}</h2>
                                 <p>Track acquisition cost against the selected purity-adjusted spot value.</p>
                             </div>
@@ -452,15 +437,24 @@
                                     <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0 4 4m-4-4-4 4M5 18v2h14v-2"/></svg>
                                 </button>
                                 <input ref="csvInput" type="file" accept=".csv" hidden @change="importCSV" />
+                                <!-- Only when the empty state (which carries its own, labelled
+                                     unlock button) is not on screen — never two at once. -->
+                                <button v-if="purchases.length || showForm"
+                                    class="ledger-icon-btn ledger-lock-btn" :class="{ 'is-unlocked': isOwner }"
+                                    @click="openPwModal"
+                                    :title="isOwner ? 'Owner view active — lock and clear' : 'Unlock owner purchases'"
+                                    :aria-label="isOwner ? 'Owner active' : 'Unlock owner view'">
+                                    <svg v-if="isOwner" viewBox="0 0 24 24" fill="none">
+                                        <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>
+                                    </svg>
+                                    <svg v-else viewBox="0 0 24 24" fill="none">
+                                        <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
 
-                        <div v-if="purchases.length" class="ledger-summary">
-                            <div><span>Positions</span><strong>{{ purchases.length }}</strong></div>
-                            <div><span>Invested</span><strong>{{ fmt(totalInvested) }}</strong></div>
-                            <div><span>Market value</span><strong>{{ fmt(totalCurrent) }}</strong></div>
-                            <div :class="totalGL >= 0 ? 'gain-text' : 'loss-text'"><span>Net return</span><strong>{{ totalGL >= 0 ? '+' : '' }}{{ fmt(totalGL) }}</strong></div>
-                        </div>
+                        <!-- Invested / market value / net return live in the Portfolio card (col-right). -->
 
                         <!-- ── PURCHASES CONTENT ── -->
                         <div>
@@ -516,11 +510,7 @@
                                 </div>
                             </transition>
 
-                            <!-- Total weight summary -->
-                            <div v-if="purchases.length" class="purchases-totals">
-                                <span>Total recorded weight</span>
-                                <span class="purchases-total-weight">{{ totalWeightChi.toFixed(2) }} Chi · {{ totalWeightGrams.toFixed(1) }}g</span>
-                            </div>
+                            <!-- Total weight lives in the Portfolio card (col-right). -->
 
                             <!-- Purchase Cards -->
                             <div v-if="purchases.length" class="purchases-list">
@@ -610,7 +600,27 @@
                                 </svg>
                                 <strong>Your private gold ledger is empty</strong>
                                 <p>Add a purchase to compare its acquisition cost with today’s purity-adjusted spot estimate.</p>
-                                <button class="primary-btn empty-add-btn" @click="showForm = true">Record first purchase</button>
+                                <div class="empty-actions">
+                                    <button class="primary-btn empty-add-btn" @click="showForm = true">Record first purchase</button>
+                                    <button class="ghost-btn empty-lock-btn" :class="{ 'is-unlocked': isOwner }"
+                                        @click="openPwModal"
+                                        :aria-label="isOwner ? 'Owner active' : 'Unlock owner view'">
+                                        <svg v-if="isOwner" viewBox="0 0 24 24" fill="none">
+                                            <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>
+                                        </svg>
+                                        <svg v-else viewBox="0 0 24 24" fill="none">
+                                            <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                                        </svg>
+                                        {{ isOwner ? 'Lock owner' : 'Unlock owner' }}
+                                    </button>
+                                </div>
+                                <!-- Give the empty state something to say: today's spot at the
+                                     weights a purchase is most likely to be recorded in. -->
+                                <div v-if="displayPrice" class="empty-spot-hint">
+                                    <span class="empty-spot-label">Today’s spot</span>
+                                    <span><em>1 chi</em>{{ fmt(renderedValuationPPG * CHI) }}</span>
+                                    <span><em>1 damlung</em>{{ fmt(renderedValuationPPG * DAMLUNG) }}</span>
+                                </div>
                             </div>
                         </div>
                     </BorderGlow>
@@ -691,14 +701,7 @@
                                 <span class="qref-label">{{ qty }} Damlung</span>
                                 <span class="qref-val">{{ fmt(renderedValuationPPG * DAMLUNG * qty) }}</span>
                             </div>
-                            <template v-if="qrefHoldingsRows.length">
-                                <div class="qref-divider" />
-                                <div class="qref-section-label">My Holdings</div>
-                                <div v-for="row in qrefHoldingsRows" :key="row.key" class="qref-row">
-                                    <span class="qref-label">{{ row.weight }} {{ t[row.unit] || row.unit }}</span>
-                                    <span class="qref-val">{{ fmt(row.value) }}</span>
-                                </div>
-                            </template>
+                            <!-- Per-position values live in the Holdings table above. -->
                         </div>
                     </BorderGlow>
 
@@ -1214,19 +1217,6 @@ const sortedPurchases = computed(() => {
     if (purchaseSort.value === 'weight-asc') return list.sort((a, b) => toGrams(a.weight, a.unit) - toGrams(b.weight, b.unit))
     if (purchaseSort.value === 'weight-desc') return list.sort((a, b) => toGrams(b.weight, b.unit) - toGrams(a.weight, a.unit))
     return list
-})
-
-const qrefHoldingsRows = computed(() => {
-    if (!purchases.value.length || !renderedPPG.value) return []
-    const seen = new Set()
-    return purchases.value.reduce((acc, p) => {
-        const key = `${p.weight}-${p.unit}`
-        if (!seen.has(key)) {
-            seen.add(key)
-            acc.push({ key, weight: p.weight, unit: p.unit, value: renderedValuationPPG.value * toGrams(p.weight, p.unit) })
-        }
-        return acc
-    }, []).slice(0, 5)
 })
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
@@ -2096,7 +2086,6 @@ onBeforeUnmount(() => {
     min-width: unset;
 }
 
-.lock-nav-btn { font-size: 16px; }
 
 .offline-bar {
     text-align: center;
@@ -2385,7 +2374,9 @@ onBeforeUnmount(() => {
 .hero-price {
     display: flex;
     align-items: baseline;
-    gap: 2px;
+    /* Bodoni's numerals have very little left side bearing, so a 2px gap let
+       the "$" collide with the first digit once the display sizes kicked in. */
+    gap: 10px;
     line-height: 1;
     margin-bottom: 4px;
     position: relative;
@@ -2497,38 +2488,6 @@ onBeforeUnmount(() => {
 }
 
 .chips-scroll::-webkit-scrollbar { display: none; }
-
-.chips-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    margin-bottom: 10px;
-}
-
-.chip {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 10px;
-}
-
-.chip-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-3);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-}
-
-.chip-price {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
-    font-family: var(--mono);
-}
 
 /* ── Progress / Flash ── */
 .progress-bar {
@@ -2790,6 +2749,7 @@ onBeforeUnmount(() => {
 /* ── Converter ── */
 .conv-tabs-scroll {
     display: flex;
+    flex-wrap: wrap;
     gap: 5px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -3132,6 +3092,8 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    /* space-between alone collapses to zero when the value fills the row */
+    gap: 12px;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -3143,6 +3105,8 @@ onBeforeUnmount(() => {
 .kpi-item.kpi-big { padding: 16px 14px; }
 
 .kpi-label {
+    flex: 0 1 auto;
+    min-width: 0;
     font-size: 11px;
     font-weight: 700;
     color: var(--text-3);
@@ -3151,6 +3115,8 @@ onBeforeUnmount(() => {
 }
 
 .kpi-val {
+    flex: 0 0 auto;
+    text-align: right;
     font-size: 18px;
     font-weight: 800;
     color: var(--text);
@@ -3209,8 +3175,8 @@ onBeforeUnmount(() => {
 
 .ht-header {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: 0;
+    grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+    gap: 8px;
     padding: 8px 12px;
     background: var(--surface3);
     border-bottom: 1px solid var(--border);
@@ -3226,8 +3192,8 @@ onBeforeUnmount(() => {
 
 .ht-row {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: 0;
+    grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+    gap: 8px;
     padding: 9px 12px;
     border-bottom: 1px solid var(--border);
     align-items: center;
@@ -3237,6 +3203,11 @@ onBeforeUnmount(() => {
     transition: background 0.15s;
 }
 
+/* Right-align the numeric columns: left-aligned in a ~380px rail they ran
+   together into "$2480$2639+$159". */
+.ht-header span:not(:first-child),
+.ht-row > span:not(.ht-weight) { text-align: right; }
+.ht-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ht-row:last-child { border-bottom: none; }
 .ht-row:hover { background: var(--surface3); }
 .ht-weight { font-weight: 700; color: var(--text); }
@@ -3259,6 +3230,7 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 9px 14px;
     border-bottom: 1px solid var(--border);
 }
@@ -3411,25 +3383,6 @@ onBeforeUnmount(() => {
 
 .slide-down-enter-to,
 .slide-down-leave-from { max-height: 700px; }
-
-/* ── Chip shimmer ── */
-@keyframes shimmerSwipe {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(300%); }
-}
-
-.chip-shimmer { position: relative; overflow: hidden; }
-
-.chip-shimmer .shimmer-line {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 40%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(245, 200, 66, 0.3), transparent);
-    transform: translateX(-100%);
-    animation: shimmerSwipe 0.7s ease forwards;
-}
 
 /* ── Card stagger ── */
 @keyframes cardSlideIn {
@@ -3589,13 +3542,16 @@ onBeforeUnmount(() => {
 .price-hero::before {
     content: 'XAU';
     position: absolute;
-    right: -8px;
-    top: 54px;
+    right: 18px;
+    top: 26px;
     font-family: 'Bodoni Moda', serif;
-    font-size: 116px;
+    /* Scaled to the rail: at a fixed 116px it collided with the hero digits
+       once the left column stopped being full-width. */
+    font-size: clamp(52px, 4.4vw, 88px);
     line-height: 1;
+    letter-spacing: .02em;
     color: var(--gold);
-    opacity: .035;
+    opacity: .045;
     pointer-events: none;
 }
 .seg-ctrl { width: max-content; border-radius: 4px; padding: 2px; margin-bottom: 28px; }
@@ -3608,7 +3564,9 @@ onBeforeUnmount(() => {
     font-family: 'Bodoni Moda', serif;
     font-weight: 700;
     font-size: clamp(58px, 6vw, 92px);
-    letter-spacing: -.065em;
+    /* -.065em ran to ~6px of negative tracking at display sizes and jammed the
+       digits together; -.038em keeps the tight look without the collisions. */
+    letter-spacing: -.038em;
 }
 .price-dec { font-family: 'Bodoni Moda', serif; }
 .price-unit-meta { margin-top: -3px; }
@@ -3644,10 +3602,8 @@ onBeforeUnmount(() => {
 .provenance-label { display: block; margin-bottom: 5px; color: var(--text-3); font: 500 8px/1 var(--mono); letter-spacing: .13em; }
 .data-provenance strong { display: block; overflow: hidden; color: var(--text-2); font: 500 9px/1.35 var(--mono); text-overflow: ellipsis; white-space: nowrap; }
 
-.chips-grid { gap: 1px; padding: 1px; background: var(--border); border: 0; }
-.chip { border: 0; border-radius: 0; background: var(--surface2); }
-.chip-label, .tile-name { font-family: var(--mono); letter-spacing: .1em; }
-.chip-price, .tile-price { font-family: 'Bodoni Moda', serif; }
+.tile-name { font-family: var(--mono); letter-spacing: .1em; }
+.tile-price { font-family: 'Bodoni Moda', serif; }
 .sub-panel { border-radius: 5px; border-style: solid; }
 .primary-btn { border-radius: 4px; color: #17140b; }
 .text-input, .method-btn, .conv-tab, .from-badge { border-radius: 4px; }
@@ -3685,49 +3641,82 @@ onBeforeUnmount(() => {
     .purchases-list { display: grid; grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ── Desktop grid ───────────────────────────────────────────────────────────
+   One system, three tiers. Columns are fr-based so extra width is shared by
+   every column instead of being dumped into the centre. Every column uses
+   `align-items: start` so a card is only as tall as its own content — grid's
+   default `stretch` was padding the short cards out to match the tallest.
+   ------------------------------------------------------------------------ */
+
+/* Two columns; the right rail wraps underneath as a self-sizing row. */
 @media (min-width: 1100px) {
     .main { padding: 24px 24px 72px; }
 
     .desktop-grid {
-        grid-template-columns: 280px 1fr 260px;
-        grid-template-rows: auto;
-        gap: 14px;
+        grid-template-columns: minmax(300px, 4fr) minmax(440px, 7fr);
+        grid-template-rows: auto auto;
+        gap: 16px;
+        align-items: start;
     }
 
-    .col-left { grid-column: 1; grid-row: 1; position: sticky; top: var(--header-h); align-self: start; }
+    .col-left { grid-column: 1; grid-row: 1; position: static; }
     .col-center { grid-column: 2; grid-row: 1; }
-    .col-right { grid-column: 3; grid-row: 1; position: sticky; top: var(--header-h); align-self: start; }
+
+    .col-right {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        align-items: start;
+        position: static;
+        gap: 16px;
+    }
+    .col-right > * { min-width: 0; }
+
     .unit-grid { grid-template-columns: repeat(3, 1fr); }
     .purchases-list { display: grid; grid-template-columns: 1fr; }
-    .price-int { font-size: 52px; }
-    .chips-grid { grid-template-columns: repeat(2, 1fr); }
+    .data-provenance { grid-template-columns: 1fr; }
 }
 
-@media (min-width: 1280px) {
-    .desktop-grid { grid-template-columns: 320px 1fr 300px; gap: 16px; }
+/* Enough width for a genuine three-column desk: the rail moves alongside. */
+@media (min-width: 1440px) {
+    .desktop-grid {
+        grid-template-columns: minmax(300px, 3.4fr) minmax(460px, 6fr) minmax(280px, 3fr);
+        grid-template-rows: auto;
+        gap: 16px;
+    }
+
+    .col-left { grid-column: 1; grid-row: 1; }
+    .col-center { grid-column: 2; grid-row: 1; }
+    .col-right {
+        grid-column: 3;
+        grid-row: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .unit-grid { grid-template-columns: repeat(2, 1fr); }
     .purchases-list { grid-template-columns: repeat(2, 1fr); }
-    .unit-grid { grid-template-columns: repeat(6, 1fr); }
-    .chips-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* Past here, extra width buys density — more columns, not just bigger cards. */
 @media (min-width: 1600px) {
     .main { padding: 28px 32px 72px; }
     .header-inner { max-width: 1800px; padding: 12px 32px; }
 
     .desktop-grid {
-        grid-template-columns: 360px 1fr 320px;
+        grid-template-columns: minmax(320px, 3.2fr) minmax(560px, 6.4fr) minmax(320px, 3fr);
         gap: 20px;
         max-width: 1800px;
         margin: 0 auto;
     }
 
-    .price-int { font-size: 68px; letter-spacing: -3px; }
     .price-dollar { font-size: 32px; }
     .price-dec { font-size: 26px; }
-    .card { padding: 24px 22px; border-radius: 22px; }
-    .purchases-list { grid-template-columns: repeat(3, 1fr); }
-    .unit-grid { grid-template-columns: repeat(6, 1fr); }
-    .chips-grid { grid-template-columns: repeat(3, 1fr); }
+    .card { padding: 24px 22px; }
+    .purchases-list { grid-template-columns: repeat(2, 1fr); }
+    .unit-grid { grid-template-columns: repeat(3, 1fr); }
     .kpi-val { font-size: 22px; }
     .kpi-main { font-size: 28px; }
     .kpi-item { padding: 16px 18px; }
@@ -3742,19 +3731,17 @@ onBeforeUnmount(() => {
     .header-inner { max-width: 2200px; padding: 14px 40px; }
 
     .desktop-grid {
-        grid-template-columns: 400px 1fr 380px;
+        grid-template-columns: minmax(360px, 3fr) minmax(680px, 6.6fr) minmax(360px, 3fr);
         gap: 24px;
         max-width: 2200px;
     }
 
-    .price-int { font-size: 80px; letter-spacing: -4px; }
     .price-dollar { font-size: 38px; }
     .price-dec { font-size: 30px; }
-    .card { padding: 28px 26px; border-radius: 24px; }
-    .section-title { font-size: 15px; margin-bottom: 18px; }
+    .card { padding: 28px 26px; }
+    .section-title { margin-bottom: 18px; }
     .purchases-list { grid-template-columns: repeat(3, 1fr); }
-    .unit-grid { grid-template-columns: repeat(6, 1fr); }
-    .chips-grid { grid-template-columns: repeat(3, 1fr); }
+    .unit-grid { grid-template-columns: repeat(3, 1fr); }
     .kpi-val { font-size: 26px; }
     .kpi-main { font-size: 34px; }
     .kpi-item { padding: 20px 22px; }
@@ -3870,27 +3857,6 @@ onBeforeUnmount(() => {
 .sort-select:focus { outline: none; border-color: var(--gold-border); color: var(--text); }
 
 /* ── Purchases total weight bar ── */
-.purchases-totals {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    color: var(--text-3);
-    font-weight: 500;
-    margin-bottom: 10px;
-    padding: 7px 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 9px;
-}
-
-.purchases-total-weight {
-    font-family: var(--mono);
-    color: var(--gold);
-    font-weight: 700;
-    font-size: 12px;
-}
-
 /* ── Total weight KPI ── */
 .kpi-weight {
     font-size: 15px !important;
@@ -3953,18 +3919,14 @@ onBeforeUnmount(() => {
     .main { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
 }
 
-/* Keep the bullion desk geometry authoritative over legacy wide-screen rules. */
+/* Single owner for these three: they are declared unscoped and therefore beat
+   any media-query value at equal specificity. Scale them with clamp() rather
+   than restating them per breakpoint. */
 .card { border-radius: 10px; }
-.section-title { font-family: 'Bodoni Moda', serif; font-size: 20px; }
-.price-int { font-family: 'Bodoni Moda', serif; font-size: clamp(58px, 6vw, 92px); letter-spacing: -.065em; }
+.section-title { font-family: 'Bodoni Moda', serif; font-size: clamp(20px, 1.1vw, 23px); }
+.price-int { font-family: 'Bodoni Moda', serif; font-size: clamp(58px, 6vw, 104px); letter-spacing: -.038em; }
 .mobile-nav { background: rgba(11, 11, 9, .96); }
 .app:not(.dark) .mobile-nav { background: rgba(233, 227, 213, .96); }
-
-@media (min-width: 1600px) {
-    .card { border-radius: 10px; }
-    .price-int { font-size: 86px; letter-spacing: -.065em; }
-    .section-title { font-size: 21px; }
-}
 
 /* ── Market context, purity and progressive disclosure ─────────────────── */
 .valuation-strip {
@@ -4013,19 +3975,7 @@ onBeforeUnmount(() => {
 .mnav-icon { width: 22px; height: 22px; stroke: var(--text-3); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke .15s, transform .15s; }
 .mnav-btn.active .mnav-icon { stroke: var(--gold); transform: translateY(-2px); filter: drop-shadow(0 0 4px rgba(220,184,93,.35)); }
 
-@media (min-width: 1100px) {
-    .desktop-grid { display: grid; grid-template-columns: minmax(340px, 5fr) minmax(520px, 7fr); align-items: start; gap: 18px; }
-    .col-left { grid-column: 1; grid-row: 1; position: static; }
-    .col-center { grid-column: 2; grid-row: 1; }
-    /* grid-row must be restated: the earlier min-width:1100px block puts this
-       column on row 1 for the old 3-column desk, and a full-width span on row 1
-       would sit straight on top of the two columns beside it. */
-    .col-right { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); position: static; gap: 18px; }
-    .col-right > * { min-width: 0; }
-}
-
 @media (max-width: 767px) {
-    .chips-grid.units-collapsed .chip:nth-child(n + 4),
     .unit-grid.units-collapsed .unit-tile:nth-child(n + 4) { display: none; }
     .mobile-units-toggle { display: block; }
     .valuation-strip { grid-template-columns: 1fr; }
@@ -4046,12 +3996,11 @@ onBeforeUnmount(() => {
 .section-actions { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
 .ledger-icon-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-2); background: var(--surface2); cursor: pointer; }
 .ledger-icon-btn:hover { color: var(--gold); border-color: var(--gold-border); }
+/* Owner unlock: gold + filled while the owner vault is open, so the ledger's
+   privacy state is readable from the ledger itself. */
+.ledger-lock-btn.is-unlocked { color: var(--gold); border-color: var(--gold-border); background: rgba(220, 184, 93, .12); }
 .ledger-icon-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
-.ledger-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 18px 0 12px; border: 1px solid var(--border); background: var(--border); }
-.ledger-summary > div { min-width: 0; padding: 12px; background: var(--surface2); }
-.ledger-summary span { display: block; margin-bottom: 6px; color: var(--text-3); font: 8px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
-.ledger-summary strong { display: block; overflow: hidden; color: var(--text); font: 600 15px 'Bodoni Moda', serif; white-space: nowrap; text-overflow: ellipsis; }
 
 .add-purchase-btn { justify-content: flex-start; gap: 14px; padding: 13px 15px; border-width: 1px; border-style: solid; border-radius: 4px; text-align: left; }
 .add-purchase-btn .add-icon { display: grid; place-items: center; width: 31px; height: 31px; flex: 0 0 31px; border-radius: 50%; color: #15130b; background: var(--gold); font: 400 20px/1 var(--mono); }
@@ -4069,8 +4018,6 @@ onBeforeUnmount(() => {
 .entry-preview strong { color: var(--gold); font: 600 18px 'Bodoni Moda', serif; white-space: nowrap; }
 .ledger-save-btn { min-height: 44px; border-radius: 3px; font: 600 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
 
-.purchases-totals { margin: 12px 0; padding: 9px 12px; border-radius: 3px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .07em; }
-.purchases-total-weight { color: var(--text); font-weight: 500; }
 .purchases-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .p-card-stagger { min-width: 0; }
 .p-card { position: relative; padding: 17px; border: 1px solid var(--border) !important; border-radius: 5px !important; background: var(--surface2) !important; }
@@ -4090,11 +4037,22 @@ onBeforeUnmount(() => {
 .gl-main { font-family: 'Bodoni Moda', serif; font-size: 15px; }
 .return-pct { font: 500 8px var(--mono); color: currentColor; }
 
-#purchases-section .empty-state { min-height: 260px; padding: 38px 20px; border: 1px dashed var(--border-hi); border-radius: 4px; background: linear-gradient(135deg, transparent, rgba(220,184,93,.035)); }
+#purchases-section .empty-state { min-height: 0; padding: 30px 20px; border: 1px dashed var(--border-hi); border-radius: 4px; background: linear-gradient(135deg, transparent, rgba(220,184,93,.035)); }
+.empty-spot-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 18px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); width: 100%; max-width: 420px; }
+.empty-spot-hint > span { color: var(--gold); font: 600 12px 'Bodoni Moda', serif; }
+.empty-spot-hint em { display: block; color: var(--text-3); font: 500 8px var(--mono); font-style: normal; letter-spacing: .09em; text-transform: uppercase; }
+.empty-spot-label { color: var(--text-3) !important; font: 500 8px var(--mono) !important; letter-spacing: .09em; text-transform: uppercase; }
 .ledger-empty-icon { width: 58px; height: 58px; color: var(--gold-dim); }
 #purchases-section .empty-state strong { font: 600 21px 'Bodoni Moda', serif; }
 #purchases-section .empty-state p { max-width: 420px; margin: 0 auto; color: var(--text-3); font: 9px/1.65 var(--mono); }
-.empty-add-btn { margin-top: 8px; padding-inline: 18px; border-radius: 3px; }
+.empty-actions { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 10px; width: 100%; max-width: 486px; margin-top: 8px; }
+/* Both buttons share one box: equal flex basis gives equal width, and the
+   shared min-height/padding stops the ghost button sitting 11px shorter. */
+.empty-actions > button { flex: 1 1 200px; max-width: 232px; min-height: 46px; padding: 12px 18px; border-radius: 3px; }
+.empty-add-btn { padding-inline: 18px; }
+.empty-lock-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.empty-lock-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.empty-lock-btn.is-unlocked { color: var(--gold); border-color: var(--gold-border); background: rgba(220, 184, 93, .12); }
 
 @media (max-width: 900px) {
     .purchases-list { grid-template-columns: 1fr; }
@@ -4103,10 +4061,8 @@ onBeforeUnmount(() => {
     .purchases-header { flex-direction: column; }
     .section-actions { width: 100%; justify-content: flex-start; }
     .sort-select { flex: 1; }
-    .ledger-summary { grid-template-columns: 1fr 1fr; }
     .form-grid { grid-template-columns: 1fr; }
     .gl-row { grid-template-columns: 1fr 1fr; }
     .gl-col:last-child { grid-column: 1 / -1; }
-    .purchases-totals { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 </style>

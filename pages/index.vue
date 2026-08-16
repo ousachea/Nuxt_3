@@ -231,7 +231,7 @@ useHead({ title: 'Ousa — Personal Tools' })
 .hero { position: relative; min-height: 590px; padding: clamp(80px, 10vw, 150px) 0 80px; display: grid; grid-template-columns: minmax(0, 1fr) 290px; align-items: end; border-bottom: 1px solid var(--line); }
 .kicker { margin-bottom: 30px; font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; }
 .kicker span { margin-right: 20px; color: #7c7c72; }
-.hero h1 { max-width: 1020px; font-family: 'Archivo Black', sans-serif; font-size: clamp(54px, 8.4vw, 136px); line-height: 0.83; letter-spacing: -0.075em; text-transform: uppercase; }
+.hero h1 { max-width: 1020px; font-family: ui-monospace, sans-serif; font-size: clamp(54px, 8.4vw, 136px); line-height: 0.83; letter-spacing: -0.075em; text-transform: uppercase; }
 .hero h1 em { font-family: 'Newsreader', serif; font-weight: 300; letter-spacing: -0.055em; text-transform: none; }
 .hero-aside { padding-bottom: 8px; font-size: 12px; line-height: 1.75; }
 .hero-aside p { color: #62625a; }
