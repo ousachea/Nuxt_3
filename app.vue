@@ -6,6 +6,8 @@
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
+  <!-- Home + full-screen buttons for every page, whatever its layout. -->
+  <FloatingDock />
 </template>
 
 <script>
