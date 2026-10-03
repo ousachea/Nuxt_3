@@ -42,7 +42,33 @@ const sfx = useSfx()
   --font-serif: 'Cormorant Garamond', Georgia, serif;
   --font-sans: 'DM Sans', system-ui, sans-serif;
   --max: 960px;
+  --theme-card: #fff;
 }
+
+/* Dark mode for pages that opt in via usePageTheme(), which sets this class
+   on <html> while the page is open. Tokens first, then the shared chrome. */
+html.theme-dark {
+  --black: #ecebe7;
+  --white: #121212;
+  --gray: #8f8e8a;
+  --light: #252524;
+  --border: #2d2c2b;
+  --theme-card: #1a1a19;
+  color-scheme: dark;
+}
+html.theme-dark body { background: var(--white); color: var(--black); }
+html.theme-dark .nav { background: rgba(18, 18, 18, 0.85); border-color: var(--border); }
+html.theme-dark .footer { border-color: var(--border); }
+html.theme-dark .nav-logo:hover,
+html.theme-dark .sound-btn.on,
+html.theme-dark .sound-btn:hover,
+html.theme-dark .sound-more:hover,
+html.theme-dark .sound-row b { color: var(--black); border-color: var(--border); }
+html.theme-dark .sound-panel { background: var(--theme-card); border-color: var(--border); }
+
+/* circular reveal while switching theme (View Transitions) */
+html.theme-vt::view-transition-old(root),
+html.theme-vt::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
 

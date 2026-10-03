@@ -360,7 +360,101 @@ onMounted(() => {
       if (USAGE.some(u => u.id === saved.usage)) usage.value = saved.usage
     }
   } catch { /* storage unavailable — keep defaults */ }
+  applySharedParams()
 })
+
+// ---------- Sharing ----------
+// A shared link carries the result in the query string (?model=…&h=88&c=60&u=mixed)
+// so whoever opens it sees the same battery. Viewing one doesn't overwrite
+// the viewer's own saved inputs, and skips detecting their phone.
+
+const route = useRoute()
+const sharedView = ref(false)
+
+function applySharedParams() {
+  const q = route.query
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  const num = (v: unknown) => { const n = parseFloat(str(v)); return Number.isFinite(n) ? n : null }
+  const name = str(q.model)
+  const mah = num(q.mah)
+  const h = num(q.h)
+  if (!MODEL_MAH.has(name) && mah === null) return
+
+  sharedView.value = true
+  chargeFromDevice.value = false
+  if (MODEL_MAH.has(name)) {
+    brand.value = brandOf(name) ?? brand.value
+    model.value = name
+    designMah.value = MODEL_MAH.get(name)!
+  } else {
+    model.value = ''
+    designMah.value = clamp(mah!, 100, 30000)
+  }
+  if (h !== null) {
+    mode.value = 'health'
+    healthPct.value = clamp(h, 0, 100)
+  }
+  const c = num(q.c)
+  if (c !== null) chargePct.value = clamp(c, 0, 100)
+  if (USAGE.some(u => u.id === q.u)) usage.value = q.u as Usage
+}
+
+function shareUrl() {
+  const url = new URL(window.location.pathname, window.location.origin)
+  if (model.value) url.searchParams.set('model', model.value)
+  else url.searchParams.set('mah', String(Math.round(designMah.value || 0)))
+  url.searchParams.set('h', String(Math.round(health.value * 10) / 10))
+  url.searchParams.set('c', String(Math.round(charge.value)))
+  url.searchParams.set('u', usage.value)
+  return url.toString()
+}
+
+function shareText() {
+  const phone = model.value || `${fmt(designMah.value)} mAh phone`
+  const style = USAGE.find(u => u.id === usage.value)!.label.toLowerCase()
+  return `My ${phone} battery is at ${fmt(health.value, 1)}% health (${status.value.label}): `
+    + `${fmt(currentMax.value)} of ${fmt(designMah.value)} mAh left, `
+    + `about ${fmtHours(hoursFull.value)} of ${style} use per full charge.`
+}
+
+type ShareState = 'idle' | 'copied' | 'failed'
+const shareState = ref<ShareState>('idle')
+let shareTimer: ReturnType<typeof setTimeout> | undefined
+
+function flashShare(next: ShareState) {
+  shareState.value = next
+  clearTimeout(shareTimer)
+  shareTimer = setTimeout(() => { shareState.value = 'idle' }, 2200)
+}
+
+/** Native share sheet where there is one (phones), otherwise copy to clipboard. */
+async function shareResult() {
+  const text = shareText()
+  const url = shareUrl()
+  if (typeof navigator.share === 'function') {
+    try {
+      await navigator.share({ title: 'Phone Battery', text, url })
+      sfx.play('success')
+      return
+    } catch (e) {
+      if ((e as DOMException)?.name === 'AbortError') return // user closed the sheet
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url}`)
+    sfx.play('success')
+    flashShare('copied')
+  } catch {
+    sfx.play('error')
+    flashShare('failed')
+  }
+}
+
+function leaveSharedView() {
+  window.location.assign(window.location.pathname)
+}
+
+onBeforeUnmount(() => clearTimeout(shareTimer))
 
 function setBrand(next: Brand) {
   if (brand.value === next) return
@@ -490,6 +584,7 @@ watch(designMah, (mah) => {
 })
 
 watch([mode, brand, model, designMah, healthPct, measuredMah, chargePct, usage], () => {
+  if (sharedView.value) return
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       mode: mode.value,
@@ -505,73 +600,8 @@ watch([mode, brand, model, designMah, healthPct, measuredMah, chargePct, usage],
 })
 
 // ---------- Theme ----------
-// Light / dark / follow-the-system. The dark palette is applied by a class
-// on <html> (so the site nav, footer and page background follow too) and
-// removed when leaving the page, since other pages have no dark styles.
-
-type ThemePref = 'light' | 'system' | 'dark'
-const THEME_KEY = 'pb_theme'
-const themePref = ref<ThemePref>('system')
-const systemDark = ref(false)
-const isDark = computed(() => themePref.value === 'dark' || (themePref.value === 'system' && systemDark.value))
-
-function applyTheme() {
-  document.documentElement.classList.toggle('pb-dark', isDark.value)
-}
-
-let darkQuery: MediaQueryList | null = null
-const onSystemTheme = (e: MediaQueryListEvent) => { systemDark.value = e.matches }
-
-onMounted(() => {
-  try {
-    const saved = localStorage.getItem(THEME_KEY)
-    if (saved === 'light' || saved === 'dark' || saved === 'system') themePref.value = saved
-  } catch { /* storage unavailable */ }
-  darkQuery = window.matchMedia('(prefers-color-scheme: dark)')
-  systemDark.value = darkQuery.matches
-  darkQuery.addEventListener('change', onSystemTheme)
-  applyTheme()
-})
-
-watch(isDark, () => applyTheme())
-
-onBeforeUnmount(() => {
-  darkQuery?.removeEventListener('change', onSystemTheme)
-  document.documentElement.classList.remove('pb-dark', 'pb-vt')
-})
-
-/** Switch theme, revealing the new one as a circle growing from the click. */
-async function setTheme(next: ThemePref, e?: MouseEvent) {
-  if (themePref.value === next) return
-  try { localStorage.setItem(THEME_KEY, next) } catch { /* ignore */ }
-  const wasDark = isDark.value
-  const commit = () => {
-    themePref.value = next
-    applyTheme()
-  }
-  const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void>, finished: Promise<void> } }
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  // Only animate when the colours actually change (e.g. not light → system-light).
-  const changes = (next === 'dark' || (next === 'system' && systemDark.value)) !== wasDark
-  sfx.play(next === 'dark' || (next === 'system' && systemDark.value) ? 'toggle-on' : 'toggle-off')
-  if (!doc.startViewTransition || reduce || !changes || !e) return commit()
-
-  const x = e.clientX
-  const y = e.clientY
-  const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
-  document.documentElement.classList.add('pb-vt')
-  const t = doc.startViewTransition(commit)
-  try {
-    await t.ready
-    document.documentElement.animate(
-      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
-      { duration: 600, easing: 'cubic-bezier(.2, .8, .2, 1)', pseudoElement: '::view-transition-new(root)' },
-    )
-    await t.finished
-  } finally {
-    document.documentElement.classList.remove('pb-vt')
-  }
-}
+// Shared light / auto / dark switch; see composables/usePageTheme.ts.
+const { themePref, isDark, setTheme } = usePageTheme()
 
 // ---------- Device detection ----------
 // Browsers only reveal a little about the phone, so this is best-effort:
@@ -628,6 +658,8 @@ type Detection =
   | { kind: 'brand', brand: Brand, via: string }
 
 const detection = ref<Detection | null>(null)
+const detectedBrandLabel = computed(() =>
+  detection.value?.kind === 'brand' ? BRANDS.find(b => b.id === (detection.value as { brand: Brand }).brand)?.label : '')
 const detectDismissed = ref(false)
 /** What was selected before detection auto-picked a phone, for "Not my phone". */
 const beforeDetect = ref<{ brand: Brand, model: string, designMah: number } | null>(null)
@@ -736,6 +768,7 @@ onMounted(async () => {
     } catch { /* blocked by permissions policy */ }
   }
 
+  if (sharedView.value) return
   const found = await detectPhone()
   if (!found) return
   detection.value = found
@@ -760,26 +793,23 @@ onMounted(async () => {
           How much of your battery is really left — compared with the capacity it had when it was brand new.
         </p>
       </div>
-      <div class="seg theme-seg" role="radiogroup" aria-label="Theme">
-        <button type="button" role="radio" :aria-checked="themePref === 'light'" :class="{ on: themePref === 'light' }" title="Light" @click="setTheme('light', $event)">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.3" /><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.05 3.05l1.13 1.13M11.82 11.82l1.13 1.13M3.05 12.95l1.13-1.13M11.82 4.18l1.13-1.13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" /></svg>
-          <span>Light</span>
-        </button>
-        <button type="button" role="radio" :aria-checked="themePref === 'system'" :class="{ on: themePref === 'system' }" title="Match system" @click="setTheme('system', $event)">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke="currentColor" stroke-width="1.3" /><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor" /></svg>
-          <span>Auto</span>
-        </button>
-        <button type="button" role="radio" :aria-checked="themePref === 'dark'" :class="{ on: themePref === 'dark' }" title="Dark" @click="setTheme('dark', $event)">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 10.2A6 6 0 0 1 5.8 2.5a6 6 0 1 0 7.7 7.7z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" /></svg>
-          <span>Dark</span>
-        </button>
-      </div>
+      <ThemeSwitch :pref="themePref" @select="setTheme" />
     </header>
 
     <div class="layout">
       <!-- INPUTS -->
       <section class="card">
         <h2>Your battery</h2>
+
+        <div v-if="sharedView" class="detect" role="status">
+          <span class="detect-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9V1.8M4.2 4.4L7 1.6l2.8 2.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /><path d="M2.5 7.5v3.2c0 .7.6 1.3 1.3 1.3h6.4c.7 0 1.3-.6 1.3-1.3V7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" /></svg>
+          </span>
+          <div class="detect-body">
+            <strong>You're viewing a shared result</strong>
+            <small>Changes here aren't saved. <button type="button" class="detect-link" @click="leaveSharedView">Check my own phone instead</button></small>
+          </div>
+        </div>
 
         <Transition name="detect">
           <div v-if="detection && !detectDismissed" class="detect" role="status">
@@ -808,7 +838,7 @@ onMounted(async () => {
                 </div>
               </template>
               <template v-else>
-                <strong>Detected a {{ BRANDS.find(b => b.id === detection!.brand)?.label }} phone</strong>
+                <strong>Detected a {{ detectedBrandLabel }} phone</strong>
                 <small>Model {{ detection.via }} isn't in the list yet, so pick the closest one below.</small>
               </template>
             </div>
@@ -990,6 +1020,19 @@ onMounted(async () => {
           <span class="dot" />
           <strong>{{ status.label }}</strong>
           <span class="health">{{ fmt(health, 1) }}% health</span>
+          <button type="button" class="share-btn" :class="shareState" :aria-label="shareState === 'copied' ? 'Copied' : 'Share result'" @click="shareResult">
+            <Transition name="pm-swap" mode="out-in">
+              <span v-if="shareState === 'copied'" key="ok" class="share-inner">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 7.5l2.5 2.5L11 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                Copied
+              </span>
+              <span v-else-if="shareState === 'failed'" key="fail" class="share-inner">Couldn't copy</span>
+              <span v-else key="idle" class="share-inner">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 9V1.8M4.2 4.4L7 1.6l2.8 2.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /><path d="M2.5 7.5v3.2c0 .7.6 1.3 1.3 1.3h6.4c.7 0 1.3-.6 1.3-1.3V7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" /></svg>
+                Share
+              </span>
+            </Transition>
+          </button>
         </div>
 
         <div ref="batteryRef" class="battery" :class="{ flash: batteryFlash }" :aria-label="`${fmt(health, 1)}% of original capacity, ${fmt(newEquivalentPct, 1)}% of original charge`">
@@ -1131,10 +1174,6 @@ onMounted(async () => {
   gap: 1.5rem;
   flex-wrap: wrap;
 }
-.seg.theme-seg { grid-template-columns: repeat(3, auto); margin: 0; flex-shrink: 0; }
-.theme-seg button { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.8rem; }
-.theme-seg button svg { transition: transform 0.45s cubic-bezier(.34, 1.56, .64, 1); }
-.theme-seg button.on svg { transform: rotate(-25deg) scale(1.1); }
 
 /* dark palette for this page's own tokens */
 .pb.dark {
@@ -1588,6 +1627,26 @@ onMounted(async () => {
 .status { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.5rem; }
 .status strong { font-weight: 500; }
 .status .health { margin-left: auto; color: var(--gray); font-size: 0.875rem; }
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  min-width: 5.75rem;
+  justify-content: center;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--pb-card);
+  font: 400 0.8125rem var(--font-sans);
+  color: var(--black);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, color 0.18s, transform 0.25s cubic-bezier(.34, 1.56, .64, 1);
+}
+.share-btn:hover { border-color: var(--pb-line-strong); transform: translateY(-1px); }
+.share-btn:active { transform: scale(0.96); }
+.share-btn.copied { border-color: var(--pb-good); color: var(--pb-good); }
+.share-btn.failed { border-color: var(--pb-replace); color: var(--pb-replace); }
+.share-inner { display: inline-flex; align-items: center; gap: 0.4rem; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
 .status.s-great { color: var(--pb-great); }
 .status.s-good { color: var(--pb-good); }
@@ -1828,29 +1887,4 @@ onMounted(async () => {
   .stats { grid-template-columns: 1fr 1fr; }
   .stats .stat:last-child { grid-column: 1 / -1; }
 }
-</style>
-
-<style>
-/* Phone Battery dark mode — only active while that page has set the class. */
-html.pb-dark {
-  --black: #ecebe7;
-  --white: #121212;
-  --gray: #8f8e8a;
-  --light: #252524;
-  --border: #2d2c2b;
-  color-scheme: dark;
-}
-html.pb-dark body { background: var(--white); color: var(--black); }
-html.pb-dark .nav { background: rgba(18, 18, 18, 0.85); border-color: var(--border); }
-html.pb-dark .footer { border-color: var(--border); }
-html.pb-dark .nav-logo:hover,
-html.pb-dark .sound-btn.on,
-html.pb-dark .sound-btn:hover,
-html.pb-dark .sound-more:hover,
-html.pb-dark .sound-row b { color: var(--black); border-color: var(--border); }
-html.pb-dark .sound-panel { background: #1a1a19; border-color: var(--border); }
-
-/* circular reveal while switching theme (View Transitions) */
-html.pb-vt::view-transition-old(root),
-html.pb-vt::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 </style>
