@@ -55,6 +55,11 @@ declare global {
   const effect: typeof import('vue').effect
   const effectScope: typeof import('vue').effectScope
   const extendRef: typeof import('@vueuse/core').extendRef
+  const formatAgo: typeof import('../../utils/exchangeFormat').formatAgo
+  const formatKHR: typeof import('../../utils/exchangeFormat').formatKHR
+  const formatRate: typeof import('../../utils/exchangeFormat').formatRate
+  const formatSigned: typeof import('../../utils/exchangeFormat').formatSigned
+  const formatUSD: typeof import('../../utils/exchangeFormat').formatUSD
   const getAppManifest: typeof import('../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_ac634192079e3da6c879139eef5c34f8/node_modules/nuxt/dist/app/composables/manifest').getAppManifest
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
@@ -153,6 +158,7 @@ declare global {
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs
   const toValue: typeof import('vue').toValue
+  const todayKey: typeof import('../../stores/exchange').todayKey
   const triggerRef: typeof import('vue').triggerRef
   const tryOnBeforeMount: typeof import('@vueuse/core').tryOnBeforeMount
   const tryOnBeforeUnmount: typeof import('@vueuse/core').tryOnBeforeUnmount
@@ -230,6 +236,7 @@ declare global {
   const useEventBus: typeof import('@vueuse/core').useEventBus
   const useEventListener: typeof import('@vueuse/core').useEventListener
   const useEventSource: typeof import('@vueuse/core').useEventSource
+  const useExchangeStore: typeof import('../../stores/exchange').useExchangeStore
   const useExpenseStore: typeof import('../../stores/expenses').useExpenseStore
   const useEyeDropper: typeof import('@vueuse/core').useEyeDropper
   const useFavicon: typeof import('@vueuse/core').useFavicon
@@ -284,6 +291,7 @@ declare global {
   const useOnline: typeof import('@vueuse/core').useOnline
   const usePWA: typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').usePWA
   const usePageLeave: typeof import('@vueuse/core').usePageLeave
+  const usePageTheme: typeof import('../../composables/usePageTheme').usePageTheme
   const useParallax: typeof import('@vueuse/core').useParallax
   const useParentElement: typeof import('@vueuse/core').useParentElement
   const usePerformanceObserver: typeof import('@vueuse/core').usePerformanceObserver
@@ -432,8 +440,14 @@ declare global {
   export type { Component, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
+  export type { ThemePref } from '../../composables/usePageTheme'
+  import('../../composables/usePageTheme')
+  // @ts-ignore
   export type { SfxCatalog, LoopCue, SfxStorage, SfxService } from '../../utils/sfx'
   import('../../utils/sfx')
+  // @ts-ignore
+  export type { Market, Shop, Trade, AlertKind, RateAlert, HistoryPoint, Plan, ConvDir } from '../../stores/exchange'
+  import('../../stores/exchange')
 }
 // for vue template auto import
 import { UnwrapRef } from 'vue'
@@ -493,6 +507,11 @@ declare module 'vue' {
     readonly effect: UnwrapRef<typeof import('vue')['effect']>
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
     readonly extendRef: UnwrapRef<typeof import('@vueuse/core')['extendRef']>
+    readonly formatAgo: UnwrapRef<typeof import('../../utils/exchangeFormat')['formatAgo']>
+    readonly formatKHR: UnwrapRef<typeof import('../../utils/exchangeFormat')['formatKHR']>
+    readonly formatRate: UnwrapRef<typeof import('../../utils/exchangeFormat')['formatRate']>
+    readonly formatSigned: UnwrapRef<typeof import('../../utils/exchangeFormat')['formatSigned']>
+    readonly formatUSD: UnwrapRef<typeof import('../../utils/exchangeFormat')['formatUSD']>
     readonly getAppManifest: UnwrapRef<typeof import('../../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_ac634192079e3da6c879139eef5c34f8/node_modules/nuxt/dist/app/composables/manifest')['getAppManifest']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
@@ -591,6 +610,7 @@ declare module 'vue' {
     readonly toRef: UnwrapRef<typeof import('vue')['toRef']>
     readonly toRefs: UnwrapRef<typeof import('vue')['toRefs']>
     readonly toValue: UnwrapRef<typeof import('vue')['toValue']>
+    readonly todayKey: UnwrapRef<typeof import('../../stores/exchange')['todayKey']>
     readonly triggerRef: UnwrapRef<typeof import('vue')['triggerRef']>
     readonly tryOnBeforeMount: UnwrapRef<typeof import('@vueuse/core')['tryOnBeforeMount']>
     readonly tryOnBeforeUnmount: UnwrapRef<typeof import('@vueuse/core')['tryOnBeforeUnmount']>
@@ -668,6 +688,7 @@ declare module 'vue' {
     readonly useEventBus: UnwrapRef<typeof import('@vueuse/core')['useEventBus']>
     readonly useEventListener: UnwrapRef<typeof import('@vueuse/core')['useEventListener']>
     readonly useEventSource: UnwrapRef<typeof import('@vueuse/core')['useEventSource']>
+    readonly useExchangeStore: UnwrapRef<typeof import('../../stores/exchange')['useExchangeStore']>
     readonly useExpenseStore: UnwrapRef<typeof import('../../stores/expenses')['useExpenseStore']>
     readonly useEyeDropper: UnwrapRef<typeof import('@vueuse/core')['useEyeDropper']>
     readonly useFavicon: UnwrapRef<typeof import('@vueuse/core')['useFavicon']>
@@ -722,6 +743,7 @@ declare module 'vue' {
     readonly useOnline: UnwrapRef<typeof import('@vueuse/core')['useOnline']>
     readonly usePWA: UnwrapRef<typeof import('../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magicast@0.5.3_vite@7.3.3_@types+node@25.9.1_jiti@2.7.0_terser@5.4_b762c78c5490f09b691cf795487f233c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['usePWA']>
     readonly usePageLeave: UnwrapRef<typeof import('@vueuse/core')['usePageLeave']>
+    readonly usePageTheme: UnwrapRef<typeof import('../../composables/usePageTheme')['usePageTheme']>
     readonly useParallax: UnwrapRef<typeof import('@vueuse/core')['useParallax']>
     readonly useParentElement: UnwrapRef<typeof import('@vueuse/core')['useParentElement']>
     readonly usePerformanceObserver: UnwrapRef<typeof import('@vueuse/core')['usePerformanceObserver']>

@@ -33,10 +33,13 @@ export { definePageMeta } from '../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
 export { DEFAULT_CATEGORIES, useCategories } from '../composables/useCategories';
 export { useFirestoreSync } from '../composables/useFirestoreSync';
+export { usePageTheme, ThemePref } from '../composables/usePageTheme';
 export { useSfx } from '../composables/useSfx';
 export { normalizeArtists } from '../utils/artistHelpers';
+export { formatKHR, formatUSD, formatRate, formatSigned, formatAgo } from '../utils/exchangeFormat';
 export { SFX_PACK, SFX_KEYS, SFX_DEFAULTS, createSfxService, createSfxNoop, SfxCatalog, LoopCue, SfxStorage, SfxService } from '../utils/sfx';
 export { useBudgetStore } from '../stores/budget';
+export { todayKey, useExchangeStore, Market, Shop, Trade, AlertKind, RateAlert, HistoryPoint, Plan, ConvDir } from '../stores/exchange';
 export { useExpenseStore } from '../stores/expenses';
 export { useGamificationStore } from '../stores/gamification';
 export { defineStore, acceptHMRUpdate, usePinia, storeToRefs } from '../node_modules/.pnpm/@pinia+nuxt@0.11.3_magicast@0.5.3_pinia@3.0.4_typescript@5.9.3_vue@3.5.35_typescript@5.9.3__/node_modules/@pinia/nuxt/dist/runtime/composables';

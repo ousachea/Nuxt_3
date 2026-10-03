@@ -16,8 +16,12 @@ type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {},
 
 export const BorderGlow: typeof import("../components/BorderGlow/BorderGlow.vue")['default']
 export const DotGrid: typeof import("../components/DotGrid/DotGrid.vue")['default']
+export const FloatingDock: typeof import("../components/FloatingDock.vue")['default']
+export const FullscreenToggle: typeof import("../components/FullscreenToggle.vue")['default']
+export const HomeButton: typeof import("../components/HomeButton.vue")['default']
 export const ShapeGrid: typeof import("../components/ShapeGrid/ShapeGrid.vue")['default']
 export const SoundToggle: typeof import("../components/SoundToggle.vue")['default']
+export const ThemeSwitch: typeof import("../components/ThemeSwitch.vue")['default']
 export const BudgetAchievementsTab: typeof import("../components/budget/AchievementsTab.vue")['default']
 export const BudgetAddExpenseModal: typeof import("../components/budget/AddExpenseModal.vue")['default']
 export const BudgetAnalyticsTab: typeof import("../components/budget/AnalyticsTab.vue")['default']
@@ -36,6 +40,12 @@ export const BudgetSettingsTab: typeof import("../components/budget/SettingsTab.
 export const BudgetSidebarNav: typeof import("../components/budget/SidebarNav.vue")['default']
 export const BudgetSpendingTimeline: typeof import("../components/budget/SpendingTimeline.vue")['default']
 export const BudgetWeeklyChart: typeof import("../components/budget/WeeklyChart.vue")['default']
+export const ExchangeAlerts: typeof import("../components/exchange/Alerts.vue")['default']
+export const ExchangeConverter: typeof import("../components/exchange/Converter.vue")['default']
+export const ExchangeHistory: typeof import("../components/exchange/History.vue")['default']
+export const ExchangeSavings: typeof import("../components/exchange/Savings.vue")['default']
+export const ExchangeShops: typeof import("../components/exchange/Shops.vue")['default']
+export const ExchangeTrades: typeof import("../components/exchange/Trades.vue")['default']
 export const NuxtWelcome: typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_ac634192079e3da6c879139eef5c34f8/node_modules/nuxt/dist/app/components/welcome.vue")['default']
 export const NuxtLayout: typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_ac634192079e3da6c879139eef5c34f8/node_modules/nuxt/dist/app/components/nuxt-layout")['default']
 export const NuxtErrorBoundary: typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_ac634192079e3da6c879139eef5c34f8/node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']
@@ -69,8 +79,12 @@ export const Body: typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core
 export const NuxtIsland: typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_ac634192079e3da6c879139eef5c34f8/node_modules/nuxt/dist/app/components/nuxt-island")['default']
 export const LazyBorderGlow: LazyComponent<typeof import("../components/BorderGlow/BorderGlow.vue")['default']>
 export const LazyDotGrid: LazyComponent<typeof import("../components/DotGrid/DotGrid.vue")['default']>
+export const LazyFloatingDock: LazyComponent<typeof import("../components/FloatingDock.vue")['default']>
+export const LazyFullscreenToggle: LazyComponent<typeof import("../components/FullscreenToggle.vue")['default']>
+export const LazyHomeButton: LazyComponent<typeof import("../components/HomeButton.vue")['default']>
 export const LazyShapeGrid: LazyComponent<typeof import("../components/ShapeGrid/ShapeGrid.vue")['default']>
 export const LazySoundToggle: LazyComponent<typeof import("../components/SoundToggle.vue")['default']>
+export const LazyThemeSwitch: LazyComponent<typeof import("../components/ThemeSwitch.vue")['default']>
 export const LazyBudgetAchievementsTab: LazyComponent<typeof import("../components/budget/AchievementsTab.vue")['default']>
 export const LazyBudgetAddExpenseModal: LazyComponent<typeof import("../components/budget/AddExpenseModal.vue")['default']>
 export const LazyBudgetAnalyticsTab: LazyComponent<typeof import("../components/budget/AnalyticsTab.vue")['default']>
@@ -89,6 +103,12 @@ export const LazyBudgetSettingsTab: LazyComponent<typeof import("../components/b
 export const LazyBudgetSidebarNav: LazyComponent<typeof import("../components/budget/SidebarNav.vue")['default']>
 export const LazyBudgetSpendingTimeline: LazyComponent<typeof import("../components/budget/SpendingTimeline.vue")['default']>
 export const LazyBudgetWeeklyChart: LazyComponent<typeof import("../components/budget/WeeklyChart.vue")['default']>
+export const LazyExchangeAlerts: LazyComponent<typeof import("../components/exchange/Alerts.vue")['default']>
+export const LazyExchangeConverter: LazyComponent<typeof import("../components/exchange/Converter.vue")['default']>
+export const LazyExchangeHistory: LazyComponent<typeof import("../components/exchange/History.vue")['default']>
+export const LazyExchangeSavings: LazyComponent<typeof import("../components/exchange/Savings.vue")['default']>
+export const LazyExchangeShops: LazyComponent<typeof import("../components/exchange/Shops.vue")['default']>
+export const LazyExchangeTrades: LazyComponent<typeof import("../components/exchange/Trades.vue")['default']>
 export const LazyNuxtWelcome: LazyComponent<typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_ac634192079e3da6c879139eef5c34f8/node_modules/nuxt/dist/app/components/welcome.vue")['default']>
 export const LazyNuxtLayout: LazyComponent<typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_ac634192079e3da6c879139eef5c34f8/node_modules/nuxt/dist/app/components/nuxt-layout")['default']>
 export const LazyNuxtErrorBoundary: LazyComponent<typeof import("../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0_@parcel+watcher@2.5.6_@types+nod_ac634192079e3da6c879139eef5c34f8/node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']>
