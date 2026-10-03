@@ -420,8 +420,31 @@ function scrollActive() {
 
 function choose(name: string) {
   activeIndex.value = optionIndex.value.get(name) ?? -1
-  if (name === model.value) return
-  pickModel(name)
+  if (name !== model.value) pickModel(name)
+  if (name) revealBattery()
+}
+
+const batteryRef = ref<HTMLElement | null>(null)
+const batteryFlash = ref(false)
+
+/**
+ * After picking a phone, bring the battery into view if it's off screen
+ * (the stacked phone layout puts it below the inputs) and pulse it so the
+ * eye lands on the change. On desktop it's usually already visible.
+ */
+function revealBattery() {
+  nextTick(() => {
+    const el = batteryRef.value
+    if (!el) return
+    const navBottom = document.querySelector('.nav')?.getBoundingClientRect().bottom ?? 0
+    const r = el.getBoundingClientRect()
+    if (r.top < navBottom || r.bottom > window.innerHeight) {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+    }
+    batteryFlash.value = false
+    requestAnimationFrame(() => { batteryFlash.value = true })
+  })
 }
 
 /**
@@ -778,7 +801,7 @@ onMounted(async () => {
                     :key="n"
                     type="button"
                     :class="{ on: model === n }"
-                    @click="applyModel(n)"
+                    @click="applyModel(n); revealBattery()"
                   >
                     {{ n }}
                   </button>
@@ -969,7 +992,7 @@ onMounted(async () => {
           <span class="health">{{ fmt(health, 1) }}% health</span>
         </div>
 
-        <div class="battery" :aria-label="`${fmt(health, 1)}% of original capacity, ${fmt(newEquivalentPct, 1)}% of original charge`">
+        <div ref="batteryRef" class="battery" :class="{ flash: batteryFlash }" :aria-label="`${fmt(health, 1)}% of original capacity, ${fmt(newEquivalentPct, 1)}% of original charge`">
           <div class="cell">
             <div class="lost" :style="{ left: `${usableWidth}%` }" />
             <div class="fill" :class="`s-${status.key}`" :style="{ width: `${fillWidth}%` }">
@@ -1573,7 +1596,12 @@ onMounted(async () => {
 .status.s-over { color: var(--pb-over); }
 
 /* BATTERY */
-.battery { display: flex; align-items: center; gap: 4px; }
+.battery { display: flex; align-items: center; gap: 4px; scroll-margin: 6rem 0 2rem; }
+.battery.flash .cell { animation: battery-flash 1.1s cubic-bezier(.2, .8, .2, 1) 0.35s; }
+@keyframes battery-flash {
+  0% { box-shadow: 0 0 0 0 rgba(63, 143, 90, 0.5); }
+  100% { box-shadow: 0 0 0 14px rgba(63, 143, 90, 0); }
+}
 .cell {
   position: relative;
   flex: 1;
