@@ -8,6 +8,7 @@ const pageDetails = {
   '/gold': { eyebrow: 'Markets', description: 'Live prices, portfolio tracking and Khmer gold units.', tone: 'gold', symbol: 'Au' },
   '/budget': { eyebrow: 'Finance', description: 'Plan spending, build savings and see the month clearly.', tone: 'blue', symbol: '₿' },
   '/exchange': { eyebrow: 'Currency', description: 'Convert between US dollars and Cambodian riel in seconds.', tone: 'coral', symbol: '៛' },
+  '/phone-battery': { eyebrow: 'Utility', description: 'See how much battery capacity is left compared with when it was new.', tone: 'green', symbol: 'mAh' },
   '/phone': { eyebrow: 'Utility', description: 'A focused mobile workspace, designed for the small screen.', tone: 'violet', symbol: '⌁' },
   '/salary': { eyebrow: 'Income', description: 'Model a pay rise and see what survives the tax bands.', tone: 'teal', symbol: '%' },
   '/sound': { eyebrow: 'Preferences', description: 'Pick a sound pack and audition every interface cue.', tone: 'slate', symbol: '♪' },
