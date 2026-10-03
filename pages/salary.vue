@@ -9,6 +9,7 @@ definePageMeta({ layout: false })
  * ------------------------------------------------------------------ */
 
 const STORE_KEY = 'sal_calc_v1'
+const SALARY_RESET_KEY = 'sal_default_350'
 
 const sfx = useSfx()
 /** Section switches speak their resulting state, not the act of clicking. */
@@ -23,7 +24,7 @@ function pickCurrency (next) {
 /* --- inputs ------------------------------------------------------- */
 const currency = ref('USD')            // 'USD' | 'KHR'
 const period = ref('month')            // 'month' | 'year' — how salary is entered
-const salary = ref(1200)               // in `currency`, per `period`
+const salary = ref(350)                // in `currency`, per `period`
 const raisePct = ref(7)
 
 const taxMode = ref('brackets')        // 'none' | 'flat' | 'brackets' | 'payslip'
@@ -339,6 +340,16 @@ onMounted(() => {
   } catch {
     /* corrupted or unavailable storage — fall through to defaults */
   }
+  // One-time reset: the default salary moved to $350/month, so drop the old
+  // saved salary once (other saved settings are kept).
+  try {
+    if (!localStorage.getItem(SALARY_RESET_KEY)) {
+      currency.value = 'USD'
+      period.value = 'month'
+      salary.value = 350
+      localStorage.setItem(SALARY_RESET_KEY, '1')
+    }
+  } catch { /* storage blocked — nothing saved to reset */ }
   if (!Array.isArray(brackets.value) || !brackets.value.length) loadCambodiaPreset()
   // 'none' used to be a tax mode; the section switch replaced it.
   if (taxMode.value === 'none') {
