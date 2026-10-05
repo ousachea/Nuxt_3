@@ -3,3 +3,6 @@ node_modules
 .output
 .netlify
 dist
+
+# macOS
+.DS_Store
